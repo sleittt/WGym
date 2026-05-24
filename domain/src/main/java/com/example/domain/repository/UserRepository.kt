@@ -4,9 +4,10 @@ import com.example.domain.model.user.User
 import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {
-    fun getCurrentUser() : Flow<User?>
+    fun getCurrentUser() : User?
+    fun getCurrentUserFlow() : Flow<User?>
     fun getUserByID(userId: String): Flow<User?>
-    suspend fun updateProfile (update: User) : User
+    suspend fun updateProfile (userId: String,name: String, photoUrl: String) : User
     suspend fun followUser (userId: String)
     suspend fun unfollowUser (userId: String)
     fun isFollowing (userId: String): Flow<Boolean>

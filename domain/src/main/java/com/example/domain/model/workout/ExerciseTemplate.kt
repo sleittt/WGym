@@ -5,4 +5,5 @@ data class ExerciseTemplate (
     val name: String,
     val description: String,
     val muscleGroups: List<MuscleGroup>,
+    val isDeleted: Boolean
 )

@@ -5,36 +5,36 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
-//android {
-//    namespace = "com.example.data"
-//    compileSdk {
-//        version = release(36)
-//    }
-//
-//    defaultConfig {
+android {
+    namespace = "com.example.data"
+    compileSdk {
+        version = release(36)
+    }
+
+    defaultConfig {
 //        applicationId = "com.example.data"
-//        minSdk = 33
+        minSdk = 33
 //        targetSdk = 36
 //        versionCode = 1
 //        versionName = "1.0"
-//
-//        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-//    }
-//
-//    buildTypes {
-//        release {
-//            isMinifyEnabled = false
-//            proguardFiles(
-//                getDefaultProguardFile("proguard-android-optimize.txt"),
-//                "proguard-rules.pro"
-//            )
-//        }
-//    }
-//    compileOptions {
-//        sourceCompatibility = JavaVersion.VERSION_11
-//        targetCompatibility = JavaVersion.VERSION_11
-//    }
-//}
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+}
 
 dependencies {
     implementation(project(":domain"))
@@ -45,9 +45,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
 
     // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore.ktx)
-    implementation(libs.firebase.auth.ktx)
+//    implementation(platform(libs.firebase.bom))
+//    implementation(libs.firebase.firestore.ktx)
+//    implementation(libs.firebase.auth.ktx)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -61,4 +61,7 @@ dependencies {
 
     // Если нужен маппинг Flow из Firestore – может понадобиться
     implementation(libs.kotlinx.coroutines.play.services)
+
+    implementation(libs.kotlinx.datetime)
+
 }

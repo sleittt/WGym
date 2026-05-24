@@ -9,5 +9,6 @@ data class FoodItem(
     val fatsPer100g: Double,
     val carbsPer100g: Double,
     val servingDefaultGrams: Double = 100.0,
-    val photoUrl: String? = null
+    val consumedGrams: Float = 0f,
+    val isDeleted: Boolean = false
 )

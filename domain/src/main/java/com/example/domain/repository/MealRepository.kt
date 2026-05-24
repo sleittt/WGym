@@ -2,21 +2,22 @@ package com.example.domain.repository
 
 import com.example.domain.model.meal.FoodItem
 import com.example.domain.model.meal.Meal
+import com.example.domain.model.meal.MealType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
 interface MealRepository {
     //meal
-    fun observeAllMeals(): Flow<List<Meal>>
     fun observeMealsByDate(date: LocalDate): Flow<List<Meal>>
-    suspend fun getMealById(mealId: String): Meal
-    suspend fun saveMeal(meal: Meal) : Meal
-    suspend fun updateMeal(meal: Meal): Meal
-    suspend fun deleteMeal(mealId: String)
+    suspend fun addFoodToMeal(date: LocalDate, mealType: MealType, foodItemId: String, amountGrams: Float): Meal
+    suspend fun removeFoodFromMeal(mealId: String, foodItemId: String) : Meal
+
     //food item
     fun observeAllFoodItems(): Flow<List<FoodItem>>
     suspend fun getFoodItemById(foodItemId: String): FoodItem?
+    suspend fun getActiveFoodItemById(foodItemId: String): FoodItem?
     suspend fun addFoodItem(foodItem: FoodItem) : FoodItem
-    suspend fun updateFoodItem(foodItem: FoodItem): FoodItem
+    suspend fun updateFoodItem(foodItemId: String, updatedFoodItem: FoodItem): FoodItem
     suspend fun deleteFoodItem(foodItemId: String)
+    suspend fun isFoodItemUsed(foodItemId: String): Boolean
 }

@@ -50,8 +50,8 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:2.50")
 
     // Firebase (инициализация)
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-firestore-ktx")
+//    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+//    implementation("com.google.firebase:firebase-firestore-ktx")
 
     // Compose + Activity (для MainActivity)
     implementation("androidx.activity:activity-compose:1.8.2")

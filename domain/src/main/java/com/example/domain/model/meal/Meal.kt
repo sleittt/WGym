@@ -1,15 +1,17 @@
 package com.example.domain.model.meal
 
-import kotlin.time.Instant
+import kotlinx.datetime.LocalDate
 
 data class Meal(
     val id: String,
-    val foodItem: FoodItem,
-    val grams: Double,
-    val timestamp: Instant
+    val items: List<Item>,
+    val type: MealType,
+    val date: LocalDate
 ){
-    val calories: Double get() = foodItem.caloriesPer100g * grams / 100
-    val protein: Double get() = foodItem.proteinPer100g * grams / 100
-    val carbs: Double get() = foodItem.carbsPer100g * grams / 100
-    val fats: Double get() = foodItem.fatsPer100g * grams / 100
+    data class Item(
+        val foodItemId: String,
+        val amountGrams: Float
+    )
 }
+
+enum class MealType {BREAKFAST, LUNCH, DINNER, SNACK}

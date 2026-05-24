@@ -5,4 +5,5 @@ data class WorkoutTemplate (
     val name: String,
     val useCount: Int,
     val exercise: List<Exercise>,
+    val isDeleted: Boolean
 )

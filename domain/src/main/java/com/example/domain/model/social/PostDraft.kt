@@ -4,5 +4,6 @@ data class PostDraft(
     val type: PostType,
     val text: String?,
     val imageUrl: String?,
-    val contentSnapshot: PostContent?
+    val contentSnapshot: PostContent?,
+    val authorId: String
 )
