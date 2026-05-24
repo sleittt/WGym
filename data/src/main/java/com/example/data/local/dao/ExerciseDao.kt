@@ -1,0 +1,46 @@
+package com.example.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
+import com.example.data.local.entity.workout.ExerciseEntity
+import com.example.data.local.entity.workout.ExerciseWithSets
+
+@Dao
+interface ExerciseDao {
+
+    @Query("SELECT * FROM exercises WHERE workout_id = :workoutId ORDER BY `order`")
+    suspend fun getByWorkoutId(workoutId: String): List<ExerciseEntity>
+
+    @Query("SELECT * FROM exercises WHERE template_id = :templateId ORDER BY `order`")
+    suspend fun getByTemplateId(templateId: Int): List<ExerciseEntity>
+
+    @Query("SELECT * FROM exercises WHERE id = :id")
+    suspend fun getById(id: Int): ExerciseEntity?
+
+    @Transaction
+    @Query("SELECT * FROM exercises WHERE id = :id")
+    suspend fun getWithSets(id: Int): ExerciseWithSets?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(exercise: ExerciseEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(exercises: List<ExerciseEntity>): List<Long>
+
+    @Update
+    suspend fun update(exercise: ExerciseEntity)
+
+    @Delete
+    suspend fun delete(exercise: ExerciseEntity)
+
+    @Query("DELETE FROM exercises WHERE workout_id = :workoutId")
+    suspend fun deleteByWorkoutId(workoutId: String)
+
+    @Query("DELETE FROM exercises WHERE template_id = :templateId")
+    suspend fun deleteByTemplateId(templateId: Int)
+}
