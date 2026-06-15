@@ -1,6 +1,6 @@
 package com.example.domain.model.workout
 
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 import kotlin.time.Instant
 
 data class Workout(

@@ -9,13 +9,20 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.local.entity.workout.WorkoutEntity
 import com.example.data.local.entity.workout.WorkoutWithExercises
-import kotlinx.datetime.LocalDate
+import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 @Dao
 interface WorkoutDao {
 
+    @Query("SELECT * FROM workouts ORDER BY date DESC, id DESC")
+    fun observeAll(): Flow<List<WorkoutEntity>>
+
     @Query("SELECT * FROM workouts WHERE date = :date ORDER BY id")
-    suspend fun getByDate(date: LocalDate): List<WorkoutEntity>
+    fun observeByDate(date: LocalDate): Flow<List<WorkoutEntity>>
+
+    @Query("SELECT * FROM workouts WHERE id = :id")
+    fun observeById(id: String): Flow<WorkoutEntity?>
 
     @Query("SELECT * FROM workouts WHERE id = :id")
     suspend fun getById(id: String): WorkoutEntity?
@@ -25,8 +32,11 @@ interface WorkoutDao {
     suspend fun getWithExercises(id: String): WorkoutWithExercises?
 
     @Transaction
-    @Query("SELECT * FROM workouts WHERE date = :date ORDER BY id")
-    suspend fun getWithExercisesByDate(date: LocalDate): List<WorkoutWithExercises>
+    @Query("SELECT * FROM workouts ORDER BY date DESC, id DESC")
+    fun observeWithExercises(): Flow<List<WorkoutWithExercises>>
+
+    @Query("SELECT COUNT(*) FROM workouts WHERE date BETWEEN :startDate AND :endDate")
+    suspend fun countInPeriod(startDate: LocalDate, endDate: LocalDate): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(workout: WorkoutEntity)

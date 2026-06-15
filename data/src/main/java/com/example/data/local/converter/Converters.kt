@@ -6,7 +6,7 @@ import com.example.domain.model.meal.MealType
 import com.example.domain.model.workout.MuscleGroup
 import com.example.domain.model.workout.SetType
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration

@@ -9,22 +9,26 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.local.entity.social.CommentEntity
 import com.example.data.local.entity.social.CommentWithAuthor
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CommentDao {
 
     @Query("SELECT * FROM comments WHERE post_id = :postId ORDER BY created_at DESC")
-    suspend fun getByPostId(postId: String): List<CommentEntity>
+    fun observeByPostId(postId: String): Flow<List<CommentEntity>>
 
     @Query("SELECT * FROM comments WHERE parent_comment_id = :parentId ORDER BY created_at DESC")
-    suspend fun getReplies(parentId: String): List<CommentEntity>
+    fun observeReplies(parentId: String): Flow<List<CommentEntity>>
+
+    @Query("SELECT * FROM comments WHERE id = :id")
+    fun observeById(id: String): Flow<CommentEntity?>
 
     @Query("SELECT * FROM comments WHERE id = :id")
     suspend fun getById(id: String): CommentEntity?
 
     @Transaction
     @Query("SELECT * FROM comments WHERE post_id = :postId ORDER BY created_at DESC")
-    suspend fun getByPostIdWithAuthors(postId: String): List<CommentWithAuthor>
+    fun observeByPostIdWithAuthors(postId: String): Flow<List<CommentWithAuthor>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(comment: CommentEntity)

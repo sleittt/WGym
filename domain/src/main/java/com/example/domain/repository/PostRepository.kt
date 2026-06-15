@@ -11,7 +11,7 @@ interface PostRepository {
     suspend fun createPost(draft: PostDraft) : Post
     suspend fun deletePost(postId: String)
     suspend fun getComments(postId: String) : Flow<List<Comment>>
-    suspend fun getCommentById(postId: String, commentId: String) : Flow<Comment>
+    suspend fun getCommentById(postId: String, commentId: String) : Flow<Comment?>
     suspend fun addComment(postId: String, text: String) : Comment
     suspend fun deleteComment(postId: String,commentId: String)
     suspend fun setBookmarked(postId: String, isBookmarked: Boolean)

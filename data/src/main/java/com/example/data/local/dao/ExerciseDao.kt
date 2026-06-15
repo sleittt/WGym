@@ -9,12 +9,13 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.local.entity.workout.ExerciseEntity
 import com.example.data.local.entity.workout.ExerciseWithSets
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExerciseDao {
 
     @Query("SELECT * FROM exercises WHERE workout_id = :workoutId ORDER BY `order`")
-    suspend fun getByWorkoutId(workoutId: String): List<ExerciseEntity>
+    fun observeByWorkoutId(workoutId: String): Flow<List<ExerciseEntity>>
 
     @Query("SELECT * FROM exercises WHERE template_id = :templateId ORDER BY `order`")
     suspend fun getByTemplateId(templateId: Int): List<ExerciseEntity>

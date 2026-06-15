@@ -7,9 +7,13 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.data.local.entity.workout.ExerciseTemplateEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExerciseTemplateDao {
+
+    @Query("SELECT * FROM exercise_templates WHERE isDeleted = 0 ORDER BY name")
+    fun observeAll(): Flow<List<ExerciseTemplateEntity>>
 
     @Query("SELECT * FROM exercise_templates WHERE isDeleted = 0 ORDER BY name")
     suspend fun getAll(): List<ExerciseTemplateEntity>

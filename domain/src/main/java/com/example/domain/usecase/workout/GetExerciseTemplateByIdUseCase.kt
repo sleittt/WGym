@@ -7,5 +7,5 @@ import javax.inject.Inject
 class GetExerciseTemplateByIdUseCase @Inject constructor(
     private val repo: WorkoutRepository
 ) {
-    operator fun invoke(id: String): ExerciseTemplate? = repo.getExerciseTemplateById(id)
+    suspend operator fun invoke(id: String): ExerciseTemplate? = repo.getExerciseTemplateById(id)
 }

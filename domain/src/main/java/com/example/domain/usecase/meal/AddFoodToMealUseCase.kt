@@ -2,7 +2,7 @@ package com.example.domain.usecase.meal
 
 import com.example.domain.model.meal.MealType
 import com.example.domain.repository.MealRepository
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 import javax.inject.Inject
 
 class AddFoodToMealUseCase @Inject constructor(

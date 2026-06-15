@@ -9,12 +9,13 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.local.entity.workout.WorkoutTemplateEntity
 import com.example.data.local.entity.workout.WorkoutTemplateWithExercises
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WorkoutTemplateDao {
 
     @Query("SELECT * FROM workout_templates WHERE isDeleted = 0 ORDER BY useCount DESC")
-    suspend fun getAll(): List<WorkoutTemplateEntity>
+    fun observeAll(): Flow<List<WorkoutTemplateEntity>>
 
     @Query("SELECT * FROM workout_templates WHERE id = :id")
     suspend fun getById(id: Int): WorkoutTemplateEntity?
@@ -34,6 +35,9 @@ interface WorkoutTemplateDao {
 
     @Query("UPDATE workout_templates SET isDeleted = 1, sync_status = 'PENDING_DELETE' WHERE id = :id")
     suspend fun softDelete(id: Int)
+
+    @Query("UPDATE workout_templates SET useCount = useCount + 1 WHERE id = :id")
+    suspend fun incrementUseCount(id: Int)
 
     @Query("SELECT * FROM workout_templates WHERE sync_status != 'SYNCED'")
     suspend fun getUnsynced(): List<WorkoutTemplateEntity>

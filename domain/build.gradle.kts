@@ -35,9 +35,6 @@ plugins {
 
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
-    // если нужна дата-время в моделях
     implementation(libs.kotlinx.datetime)
-
-    // Если хотите использовать @Inject в домене (опционально)
     implementation(libs.javax.inject)
 }

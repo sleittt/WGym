@@ -4,7 +4,8 @@ import com.example.domain.model.meal.FoodItem
 import com.example.domain.model.meal.Meal
 import com.example.domain.model.meal.MealType
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
+
 
 interface MealRepository {
     //meal

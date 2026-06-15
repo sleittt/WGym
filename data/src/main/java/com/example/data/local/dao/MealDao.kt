@@ -7,18 +7,18 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.example.data.local.entity.meal.FoodItemEntity
 import com.example.data.local.entity.meal.MealEntity
 import com.example.data.local.entity.meal.MealItemEntity
 import com.example.data.local.entity.meal.MealWithItems
 import com.example.data.local.entity.meal.MealWithItemsAndFood
-import kotlinx.datetime.LocalDate
+import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 @Dao
 interface MealDao {
 
     @Query("SELECT * FROM meals WHERE date = :date ORDER BY id")
-    suspend fun getByDate(date: LocalDate): List<MealEntity>
+    fun observeByDate(date: LocalDate): Flow<List<MealEntity>>
 
     @Query("SELECT * FROM meals WHERE id = :id")
     suspend fun getById(id: String): MealEntity?
@@ -29,7 +29,7 @@ interface MealDao {
 
     @Transaction
     @Query("SELECT * FROM meals WHERE date = :date ORDER BY id")
-    suspend fun getWithItemsAndFoodByDate(date: LocalDate): List<MealWithItemsAndFood>
+    fun observeWithItemsAndFoodByDate(date: LocalDate): Flow<List<MealWithItemsAndFood>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(meal: MealEntity)

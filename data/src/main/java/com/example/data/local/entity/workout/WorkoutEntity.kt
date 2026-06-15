@@ -8,7 +8,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.data.local.entity.common.SyncMetadata
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 
 @Entity(
     tableName = "workouts",

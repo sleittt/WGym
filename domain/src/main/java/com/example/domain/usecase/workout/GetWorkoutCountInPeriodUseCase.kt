@@ -1,7 +1,7 @@
 package com.example.domain.usecase.workout
 
 import com.example.domain.repository.WorkoutRepository
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 import javax.inject.Inject
 
 class GetWorkoutCountInPeriodUseCase @Inject constructor(

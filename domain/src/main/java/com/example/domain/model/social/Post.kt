@@ -21,10 +21,9 @@ sealed class PostContent {
     data class TextPost(val value: String) : PostContent()
     data class WorkoutPost(val template: WorkoutTemplate) : PostContent()
     data class MealPost(val meal: Meal) : PostContent()
-    data class GalleryPost(val images: List<Image>) : PostContent()
-    data class MixedPost(val items: List<PostContent>) : PostContent()
+    data class GalleryPost(val images: List<String>) : PostContent()    data class MixedPost(val items: List<PostContent>) : PostContent()
 }
 
-enum class PostType {
-    WORKOUT, MEAL, ALL, NONE
-}
+//enum class PostType {
+//    WORKOUT, MEAL, ALL, NONE
+//}

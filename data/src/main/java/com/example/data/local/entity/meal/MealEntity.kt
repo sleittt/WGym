@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.data.local.entity.common.SyncMetadata
 import com.example.domain.model.meal.MealType
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 
 @Entity(
     tableName = "meals",

@@ -9,15 +9,19 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.local.entity.social.PostEntity
 import com.example.data.local.entity.social.PostWithAuthor
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PostDao {
 
     @Query("SELECT * FROM posts ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
-    suspend fun getFeed(limit: Int, offset: Int): List<PostEntity>
+    fun observeFeed(limit: Int, offset: Int): Flow<List<PostEntity>>
 
     @Query("SELECT * FROM posts WHERE author_id = :authorId ORDER BY created_at DESC")
-    suspend fun getByAuthor(authorId: String): List<PostEntity>
+    fun observeByAuthor(authorId: String): Flow<List<PostEntity>>
+
+    @Query("SELECT * FROM posts WHERE id = :id")
+    fun observeById(id: String): Flow<PostEntity?>
 
     @Query("SELECT * FROM posts WHERE id = :id")
     suspend fun getById(id: String): PostEntity?
@@ -28,7 +32,7 @@ interface PostDao {
 
     @Transaction
     @Query("SELECT * FROM posts ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
-    suspend fun getFeedWithAuthors(limit: Int, offset: Int): List<PostWithAuthor>
+    fun observeFeedWithAuthors(limit: Int, offset: Int): Flow<List<PostWithAuthor>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(post: PostEntity)

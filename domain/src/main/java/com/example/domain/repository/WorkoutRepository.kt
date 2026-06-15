@@ -4,12 +4,13 @@ import com.example.domain.model.workout.ExerciseTemplate
 import com.example.domain.model.workout.Workout
 import com.example.domain.model.workout.WorkoutTemplate
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
+
 
 interface WorkoutRepository {
     //Шаблоны
     fun observeExerciseTemplates() : Flow<List<ExerciseTemplate>>
-    fun getExerciseTemplateById(id: String): ExerciseTemplate?
+    suspend fun getExerciseTemplateById(id: String): ExerciseTemplate?
     suspend fun createExerciseTemplate(template: ExerciseTemplate) : ExerciseTemplate
     suspend fun updateExerciseTemplate(id: String,template: ExerciseTemplate): ExerciseTemplate
     suspend fun deleteExerciseTemplate(id: String)

@@ -1,6 +1,6 @@
 package com.example.domain.model.meal
 
-import kotlinx.datetime.LocalDate
+import java.time.LocalDate
 
 data class Meal(
     val id: String,

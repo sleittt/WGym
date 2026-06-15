@@ -44,10 +44,9 @@ dependencies {
     ksp(libs.androidx.room.compiler) // или ks
     implementation(libs.androidx.room.ktx)
 
-    // Firebase
-//    implementation(platform(libs.firebase.bom))
-//    implementation(libs.firebase.firestore.ktx)
-//    implementation(libs.firebase.auth.ktx)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit2.kotlinx.serialization.converter)
+    implementation(libs.logging.interceptor)
 
     // Hilt
     implementation(libs.hilt.android)

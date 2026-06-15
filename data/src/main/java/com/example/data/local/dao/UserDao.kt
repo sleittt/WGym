@@ -7,12 +7,16 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.data.local.entity.user.UserEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
 
-    @Query("SELECT * FROM users")
-    suspend fun getAll(): List<UserEntity>
+    @Query("SELECT * FROM users LIMIT 1")
+    fun observeCurrentUser(): Flow<UserEntity?>
+
+    @Query("SELECT * FROM users WHERE id = :id")
+    fun observeById(id: String): Flow<UserEntity?>
 
     @Query("SELECT * FROM users WHERE id = :id")
     suspend fun getById(id: String): UserEntity?
