@@ -33,7 +33,16 @@ class FoodItemsViewModel @Inject constructor(
         val selectedFoodItem: FoodItem? = null,
         val isEditDialogOpen: Boolean = false,
         val searchQuery: String = ""
-    )
+    ) {
+        val filteredItems: List<FoodItem>
+            get() = if (searchQuery.isBlank()) {
+                foodItems.filter { !it.isDeleted }
+            } else {
+                foodItems.filter {
+                    !it.isDeleted && it.name.contains(searchQuery, ignoreCase = true)
+                }
+            }
+    }
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -79,8 +88,7 @@ class FoodItemsViewModel @Inject constructor(
                 carbsPer100g = carbs,
                 servingDefaultGrams = serving
             )
-            val result = addFoodItemUseCase(foodItem)
-            result.fold(
+            addFoodItemUseCase(foodItem).fold(
                 onSuccess = {
                     dismissDialog()
                     loadFoodItems()
@@ -114,8 +122,7 @@ class FoodItemsViewModel @Inject constructor(
                 carbsPer100g = carbs,
                 servingDefaultGrams = serving
             )
-            val result = updateFoodItemUseCase(id, foodItem)
-            result.fold(
+            updateFoodItemUseCase(id, foodItem).fold(
                 onSuccess = {
                     dismissDialog()
                     loadFoodItems()
@@ -129,8 +136,7 @@ class FoodItemsViewModel @Inject constructor(
 
     fun deleteFoodItemById(id: String) {
         viewModelScope.launch {
-            val result = deleteFoodItemUseCase(id)
-            result.fold(
+            deleteFoodItemUseCase(id).fold(
                 onSuccess = { loadFoodItems() },
                 onFailure = { e ->
                     _uiState.update { it.copy(error = e.message) }

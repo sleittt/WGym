@@ -22,7 +22,7 @@ object ExerciseMapper {
 
     fun toEntity(domain: Exercise, workoutId: String?, templateId: Int?, sync: SyncMetadata): Pair<ExerciseEntity, List<SetEntity>> {
         val exerciseEntity = ExerciseEntity(
-            id = if (domain.id == 0) 0 else domain.id,
+            id = 0, // Room генерирует
             sync = sync,
             workoutId = workoutId,
             templateId = templateId,
@@ -30,8 +30,9 @@ object ExerciseMapper {
             note = domain.note,
             order = domain.order
         )
+
         val setEntities = domain.sets.map {
-            SetMapper.toEntity(it, exerciseId = exerciseEntity.id, sync = sync)
+            SetMapper.toEntity(it, exerciseId = 0, sync = sync) // exerciseId = 0, назначим после insert
         }
         return exerciseEntity to setEntities
     }

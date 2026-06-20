@@ -19,8 +19,7 @@ object SetMapper {
     fun toEntity(domain: Set, exerciseId: Int, sync: SyncMetadata): SetEntity = SetEntity(
         id = if (domain.id == 0) 0 else domain.id,
         sync = sync,
-        exerciseId = exerciseId,
-        note = domain.note,
+        exerciseId = exerciseId, // <-- ЭТО ПОЛЕ ДОЛЖНО БЫТЬ!
         rest = domain.rest,
         load = domain.load,
         reps = domain.reps,

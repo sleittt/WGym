@@ -92,7 +92,9 @@ class WorkoutRepositoryImpl @Inject constructor(
                 sync = sync
             )
             val exId = exerciseDao.insert(exEntity).toInt()
-            setDao.insertAll(setEntities.map { it.copy(exerciseId = exId) })
+            setEntities.forEach { setEntity ->
+                setDao.insert(setEntity.copy(exerciseId = exId, id = 0))
+            }
         }
         return workout
     }
@@ -144,10 +146,14 @@ class WorkoutRepositoryImpl @Inject constructor(
                 sync = sync
             )
             val exId = exerciseDao.insert(exEntity).toInt()
-            setDao.insertAll(setEntities.map { it.copy(exerciseId = exId) })
+            // Вставляем сеты с правильным exerciseId
+            setEntities.forEach { setEntity ->
+                setDao.insert(setEntity.copy(exerciseId = exId, id = 0))
+            }
         }
         return draft.copy(id = templateId)
     }
+
 
     override suspend fun updateTemplate(id: String, updated: WorkoutTemplate): WorkoutTemplate {
         val existing = workoutTemplateDao.getById(id.toInt()) ?: throw IllegalStateException("Template not found")
@@ -155,7 +161,9 @@ class WorkoutRepositoryImpl @Inject constructor(
         val entity = WorkoutTemplateMapper.toEntity(updated.copy(id = id.toInt()), sync)
         workoutTemplateDao.update(entity)
 
+        // Удаляем старые упражнения (сеты удалятся каскадно)
         exerciseDao.deleteByTemplateId(id.toInt())
+
         updated.exercise.forEach { exercise ->
             val (exEntity, setEntities) = ExerciseMapper.toEntity(
                 domain = exercise,
@@ -164,7 +172,9 @@ class WorkoutRepositoryImpl @Inject constructor(
                 sync = sync
             )
             val exId = exerciseDao.insert(exEntity).toInt()
-            setDao.insertAll(setEntities.map { it.copy(exerciseId = exId) })
+            setEntities.forEach { setEntity ->
+                setDao.insert(setEntity.copy(exerciseId = exId, id = 0))
+            }
         }
         return updated.copy(id = id.toInt())
     }

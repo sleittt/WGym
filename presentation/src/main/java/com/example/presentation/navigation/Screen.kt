@@ -9,7 +9,9 @@ sealed class Screen(val route: String) {
     data object ActiveWorkout : Screen("active_workout/{templateId}") {
         fun createRoute(templateId: String) = "active_workout/$templateId"
     }
-    data object ExerciseTemplates : Screen("exercise_templates")
+    data object ExerciseTemplates : Screen("exercise_templates/{selectMode}") {
+        fun createRoute(selectMode: Boolean = false) = "exercise_templates/$selectMode"
+    }
     data object ExerciseDetail : Screen("exercise_detail/{exerciseId}") {
         fun createRoute(exerciseId: String) = "exercise_detail/$exerciseId"
     }
@@ -20,6 +22,8 @@ sealed class Screen(val route: String) {
     data object AddFoodToMeal : Screen("add_food_to_meal")
     data object WorkoutHistory : Screen("workout_history")
     data object Statistics : Screen("statistics")
-    data object WeightDetail : Screen("weight_detail")
     data object Settings : Screen("settings")
+    data object ExerciseSelect : Screen("exercise_select")
+
+    data object ExerciseCreate : Screen("exercise_create")
 }

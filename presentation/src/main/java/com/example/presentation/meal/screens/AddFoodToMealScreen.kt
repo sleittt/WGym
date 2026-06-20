@@ -1,23 +1,32 @@
 package com.example.presentation.meal.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.presentation.ui.theme.*
+import com.example.presentation.ui.components.Chip
+import com.example.presentation.ui.components.DangerButton
+import com.example.presentation.ui.components.SecondaryButton
+import com.example.presentation.ui.components.TextField
+import com.example.presentation.ui.components.TopAppBar
+import com.example.presentation.ui.theme.Background
+import com.example.presentation.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,13 +38,9 @@ fun AddFoodToMealScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Продукт", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад", tint = TextPrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
+                title = "Продукт",
+                navController = navController,
+                containerColor = Background
             )
         },
         containerColor = Background
@@ -47,56 +52,44 @@ fun AddFoodToMealScreen(navController: NavController) {
         ) {
             item {
                 Text("Грамм", color = TextSecondary, fontSize = 14.sp)
-                OutlinedTextField(
-                    value = grams, onValueChange = { grams = it },
-                    placeholder = { Text("Введите количество", color = TextSecondary) },
-                    colors = textFieldColors(), shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                TextField(
+                    value = grams,
+                    onValueChange = { grams = it },
+                    placeholder = "Введите количество"
                 )
             }
             item {
                 Text("Время приема", color = TextSecondary, fontSize = 14.sp)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     mealTimes.forEach { time ->
-                        val selected = time == selectedMealTime
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) PrimaryRed else SurfaceVariant)
-                                .clickable { selectedMealTime = time }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(time, color = if (selected) Color.White else TextPrimary, fontSize = 14.sp)
-                        }
+                        Chip(
+                            text = time,
+                            isSelected = time == selectedMealTime,
+                            onClick = { selectedMealTime = time },
+                            modifier = Modifier.weight(1f),
+                            cornerRadius = 10.dp,
+                            horizontalPadding = 0.dp,
+                            verticalPadding = 12.dp
+                        )
                     }
                 }
             }
             item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(PrimaryRed).clickable { }.padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Удалить запись", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                }
+                DangerButton(
+                    text = "Удалить запись",
+                    onClick = { }
+                )
             }
             item {
                 Spacer(modifier = Modifier.height(32.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceVariant).clickable { }.padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Добавить запись", color = TextPrimary, fontSize = 16.sp)
-                }
+                SecondaryButton(
+                    text = "Добавить запись",
+                    onClick = { }
+                )
             }
         }
     }
 }
-
-@Composable
-private fun textFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
-    focusedBorderColor = PrimaryRed, unfocusedBorderColor = SurfaceVariant,
-    focusedContainerColor = SurfaceVariant, unfocusedContainerColor = SurfaceVariant
-)
