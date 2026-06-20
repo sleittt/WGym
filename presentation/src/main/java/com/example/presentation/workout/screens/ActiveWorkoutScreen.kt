@@ -31,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.presentation.navigation.Screen
+import com.example.presentation.ui.components.EmptyListState
+import com.example.presentation.ui.components.TextField
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.PrimaryGreen
 import com.example.presentation.ui.theme.PrimaryRed
@@ -50,27 +56,31 @@ import com.example.presentation.ui.theme.Surface
 import com.example.presentation.ui.theme.SurfaceVariant
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
+import com.example.presentation.workout.viewmodels.ActiveWorkoutViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
     navController: NavController,
-    templateName: String = "Имя шаблона"
+    templateId: String = "",
+    viewModel: ActiveWorkoutViewModel = hiltViewModel()
 ) {
-    var isRunning by remember { mutableStateOf(false) }
-    var elapsedTime by remember { mutableStateOf("67:67") } // From Figma
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(templateId) {
+        viewModel.loadTemplate(templateId)
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    // Timer in the center like Figma
                     Box(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            elapsedTime,
+                            uiState.elapsedTimeFormatted,
                             color = TextPrimary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
@@ -87,23 +97,24 @@ fun ActiveWorkoutScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Finish workout */ }) {
+                    IconButton(
+                        onClick = { viewModel.finishWorkout() },
+                        enabled = uiState.canFinish && !uiState.isFinished
+                    ) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = "Завершить",
-                            tint = PrimaryGreen,
+                            tint = if (uiState.canFinish && !uiState.isFinished) PrimaryGreen else TextSecondary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Background
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* Add exercise */ },
+                onClick = { navController.navigate(Screen.ExerciseTemplates.createRoute(selectMode = true)) },
                 containerColor = PrimaryRed,
                 contentColor = Color.White,
                 shape = CircleShape
@@ -118,54 +129,72 @@ fun ActiveWorkoutScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(padding)
         ) {
-            // Exercise cards with sets
-            items(3) { index ->
-                ExerciseCardWithSets(
-                    exerciseName = "Упражнение",
-                    sets = listOf(
-                        SetData("W", "12 кг x 12", "12 кг", "12"),
-                        SetData("1", "12 кг x 12", "12 кг", "12", isCompleted = true, restTime = "67:67"),
-                        SetData("2", "12 кг x 12", "12 кг", "12", restTime = "67:67"),
-                        SetData("F", "12 кг x 12", "12 кг", "12")
-                    )
-                )
-            }
-
-            // Add exercise button at bottom
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceVariant)
-                        .clickable { /* Add exercise */ }
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+            // Название шаблона
+            if (uiState.templateName.isNotBlank()) {
+                item {
                     Text(
-                        "Добавить упражнение",
+                        uiState.templateName,
                         color = TextPrimary,
-                        fontSize = 16.sp
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // Save template button
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceVariant)
-                        .clickable { /* Save template */ }
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Сохранить шаблон",
-                        color = TextPrimary,
-                        fontSize = 16.sp
+            items(uiState.exercises.size) { index ->
+                val exerciseWithSets = uiState.exercises[index]
+                ExerciseCardWithSets(
+                    exerciseName = exerciseWithSets.exercise.template.name,
+                    sets = exerciseWithSets.sets.map { set ->
+                        SetData(
+                            setNumber = set.setNumber,
+                            previous = set.previous,
+                            weight = set.weight,
+                            reps = set.reps,
+                            isCompleted = set.isCompleted,
+                            restTime = set.restTime?.inWholeSeconds?.let { sec ->
+                                String.format("%02d:%02d", sec / 60, sec % 60)
+                            } ?: ""
+                        )
+                    },
+                    onSetClick = { setIndex ->
+                        viewModel.toggleSetCompletion(index, setIndex)
+                    },
+                    onWeightChange = { setIndex, weight ->
+                        viewModel.updateSetWeight(index, setIndex, weight)
+                    },
+                    onRepsChange = { setIndex, reps ->
+                        viewModel.updateSetReps(index, setIndex, reps)
+                    }
+                )
+            }
+
+            if (uiState.exercises.isEmpty()) {
+                item {
+                    EmptyListState(
+                        text = "Добавить упражнение",
+                        onClick = { navController.navigate(Screen.ExerciseTemplates.createRoute(selectMode = true)) }
                     )
+                }
+            }
+
+            if (uiState.isFinished) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(PrimaryGreen.copy(alpha = 0.2f))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Тренировка завершена!",
+                            color = PrimaryGreen,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -184,7 +213,10 @@ data class SetData(
 @Composable
 fun ExerciseCardWithSets(
     exerciseName: String,
-    sets: List<SetData>
+    sets: List<SetData>,
+    onSetClick: (Int) -> Unit,
+    onWeightChange: (Int, String) -> Unit,
+    onRepsChange: (Int, String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -197,7 +229,6 @@ fun ExerciseCardWithSets(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Exercise name
             Text(
                 exerciseName,
                 color = TextPrimary,
@@ -206,23 +237,26 @@ fun ExerciseCardWithSets(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Header row
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Подход", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(50.dp))
+                Text("Подход", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(40.dp))
                 Text("Пред.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Вес", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Text("Повторы", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(60.dp))
+                Text("Повт.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(50.dp))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Sets rows
-            sets.forEach { set ->
+            sets.forEachIndexed { index, set ->
                 SetRow(
                     setData = set,
+                    setIndex = index,
+                    onClick = { onSetClick(index) },
+                    onWeightChange = { onWeightChange(index, it) },
+                    onRepsChange = { onRepsChange(index, it) },
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
@@ -233,6 +267,10 @@ fun ExerciseCardWithSets(
 @Composable
 fun SetRow(
     setData: SetData,
+    setIndex: Int,
+    onClick: () -> Unit,
+    onWeightChange: (String) -> Unit,
+    onRepsChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when {
@@ -241,67 +279,76 @@ fun SetRow(
         else -> SurfaceVariant.copy(alpha = 0.5f)
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor)
-            .clickable { /* Toggle set completion */ }
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Set number
-            Text(
-                setData.setNumber,
-                color = if (setData.isCompleted) PrimaryGreen else TextPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.width(50.dp)
-            )
-
-            // Previous
-            Text(
-                setData.previous,
-                color = TextSecondary,
-                fontSize = 13.sp,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Weight
-            Text(
-                setData.weight,
-                color = TextPrimary,
-                fontSize = 14.sp,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Reps
-            Text(
-                setData.reps,
-                color = TextPrimary,
-                fontSize = 14.sp,
-                modifier = Modifier.width(60.dp)
-            )
-        }
-    }
-
-    // Rest time indicator (green line)
-    if (setData.restTime.isNotEmpty()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(2.dp)
-                .background(PrimaryGreen)
-        )
-        Text(
-            setData.restTime,
-            color = PrimaryGreen,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(start = 50.dp, top = 2.dp)
-        )
+                .clip(RoundedCornerShape(8.dp))
+                .background(backgroundColor)
+                .clickable { onClick() }
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    setData.setNumber,
+                    color = if (setData.isCompleted) PrimaryGreen else TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.width(40.dp)
+                )
+
+                Text(
+                    setData.previous,
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f)
+                )
+
+                var weightText by remember(setData.weight) { mutableStateOf(setData.weight) }
+                Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                    TextField(
+                        value = weightText,
+                        onValueChange = {
+                            weightText = it
+                            onWeightChange(it)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.height(40.dp)
+                    )
+                }
+
+                var repsText by remember(setData.reps) { mutableStateOf(setData.reps) }
+                Box(modifier = Modifier.width(50.dp)) {
+                    TextField(
+                        value = repsText,
+                        onValueChange = {
+                            repsText = it
+                            onRepsChange(it)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.height(40.dp)
+                    )
+                }
+            }
+        }
+
+        if (setData.restTime.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(PrimaryGreen)
+            )
+            Text(
+                setData.restTime,
+                color = PrimaryGreen,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 50.dp, top = 2.dp)
+            )
+        }
     }
 }

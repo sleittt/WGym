@@ -2,9 +2,9 @@ package com.example.presentation.workout.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.domain.model.workout.Exercise
 import com.example.domain.model.workout.WorkoutTemplate
-import com.example.domain.usecase.workout.*
+import com.example.domain.usecase.workout.DeleteWorkoutTemplateUseCase
+import com.example.domain.usecase.workout.GetWorkoutTemplateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,18 +18,14 @@ import javax.inject.Inject
 @HiltViewModel
 class WorkoutTemplatesViewModel @Inject constructor(
     private val getWorkoutTemplates: GetWorkoutTemplateUseCase,
-    private val getWorkoutTemplateById: GetWorkoutTemplateByIdUseCase,
-    private val createWorkoutTemplate: CreateWorkoutTemplateUseCase,
-    private val updateWorkoutTemplate: UpdateWorkoutTemplateUseCase,
     private val deleteWorkoutTemplate: DeleteWorkoutTemplateUseCase
 ) : ViewModel() {
 
     data class UiState(
         val templates: List<WorkoutTemplate> = emptyList(),
+        val pinnedTemplates: List<WorkoutTemplate> = emptyList(),
         val isLoading: Boolean = false,
-        val error: String? = null,
-        val selectedTemplate: WorkoutTemplate? = null,
-        val isEditDialogOpen: Boolean = false
+        val error: String? = null
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -42,46 +38,14 @@ class WorkoutTemplatesViewModel @Inject constructor(
     private fun loadTemplates() {
         getWorkoutTemplates()
             .onEach { templates ->
-                _uiState.update { it.copy(templates = templates, isLoading = false) }
+                val pinned = templates.filter { it.useCount > 0 }.take(2)
+                _uiState.update { it.copy(
+                    templates = templates,
+                    pinnedTemplates = pinned,
+                    isLoading = false
+                ) }
             }
             .launchIn(viewModelScope)
-    }
-
-    fun selectTemplate(template: WorkoutTemplate?) {
-        _uiState.update { it.copy(selectedTemplate = template, isEditDialogOpen = template != null) }
-    }
-
-    fun dismissDialog() {
-        _uiState.update { it.copy(isEditDialogOpen = false, selectedTemplate = null) }
-    }
-
-    fun createTemplate(name: String, exercises: List<Exercise>) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val template = WorkoutTemplate(
-                id = 0, name = name, useCount = 0, exercise = exercises, isDeleted = false
-            )
-            createWorkoutTemplate(template)
-                .onSuccess { loadTemplates() }
-                .onFailure { e -> _uiState.update { it.copy(error = e.message, isLoading = false) } }
-        }
-    }
-
-    fun updateTemplate(id: String, name: String, exercises: List<Exercise>) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val template = WorkoutTemplate(
-                id = id.toIntOrNull() ?: 0, name = name,
-                useCount = _uiState.value.selectedTemplate?.useCount ?: 0,
-                exercise = exercises, isDeleted = false
-            )
-            updateWorkoutTemplate(id, template)
-                .onSuccess {
-                    _uiState.update { it.copy(isEditDialogOpen = false, selectedTemplate = null) }
-                    loadTemplates()
-                }
-                .onFailure { e -> _uiState.update { it.copy(error = e.message, isLoading = false) } }
-        }
     }
 
     fun deleteTemplate(id: String) {
@@ -90,6 +54,10 @@ class WorkoutTemplatesViewModel @Inject constructor(
                 .onSuccess { loadTemplates() }
                 .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
         }
+    }
+
+    fun duplicateTemplate(id: String) {
+        // TODO: get by id, create copy with name + " (копия)", id=0
     }
 
     fun clearError() {

@@ -1,10 +1,11 @@
 package com.example.presentation.workout.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,20 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,44 +32,53 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.domain.model.workout.MuscleGroup
+import com.example.presentation.ui.components.Button
+import com.example.presentation.ui.components.Card
+import com.example.presentation.ui.components.Chip
+import com.example.presentation.ui.components.DangerButton
+import com.example.presentation.ui.components.TextField
+import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.PrimaryRed
-import com.example.presentation.ui.theme.Surface
 import com.example.presentation.ui.theme.SurfaceVariant
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
+import com.example.presentation.workout.viewmodels.ExerciseTemplatesViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ExerciseDetailScreen(
     navController: NavController,
-    exerciseName: String = "Название упражнения"
+    exerciseId: String = "",
+    viewModel: ExerciseTemplatesViewModel = hiltViewModel()
 ) {
-    var name by remember { mutableStateOf(exerciseName) }
-    var selectedMuscleGroups by remember { mutableStateOf(listOf("Грудь", "Трицепс")) }
-    var selectedType by remember { mutableStateOf("Силовое") }
-    var description by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
+    val exercise = remember(exerciseId, uiState.templates) {
+        uiState.templates.find { it.id.toString() == exerciseId }
+    }
 
-    val muscleGroups = listOf("Грудь", "Спина", "Ноги", "Плечи", "Бицепс", "Трицепс", "Пресс")
+    var name by remember(exercise) { mutableStateOf(exercise?.name ?: "") }
+    var selectedMuscleGroups by remember(exercise) { mutableStateOf(exercise?.muscleGroups ?: emptyList()) }
+    var description by remember(exercise) { mutableStateOf(exercise?.description ?: "") }
+
     val exerciseTypes = listOf("Силовое", "Кардио", "Растяжка", "Функциональное")
+    var selectedType by remember { mutableStateOf("Силовое") }
+
+    LaunchedEffect(exerciseId) {
+        if (exercise == null && exerciseId.isNotBlank()) {
+            // TODO: load by id
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Назад",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Background
-                )
+                title = "",
+                navController = navController,
+                containerColor = Background
             )
         },
         containerColor = Background
@@ -86,18 +88,11 @@ fun ExerciseDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(padding)
         ) {
-            // Chart card
+            // График
             item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
+                Card(padding = 0.dp, shapeRadius = 16.dp) {
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
@@ -108,7 +103,6 @@ fun ExerciseDetailScreen(
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        // Placeholder for chart
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(0.8f)
@@ -136,7 +130,7 @@ fun ExerciseDetailScreen(
                 }
             }
 
-            // Exercise name
+            // Название
             item {
                 Text(
                     "Название упражнения",
@@ -144,16 +138,13 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                OutlinedTextField(
+                TextField(
                     value = name,
-                    onValueChange = { name = it },
-                    colors = textFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    onValueChange = { name = it }
                 )
             }
 
-            // Muscle groups
+            // Группы мышц
             item {
                 Text(
                     "Группы мышц",
@@ -161,76 +152,49 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    selectedMuscleGroups.forEach { group ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(SurfaceVariant)
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                group,
-                                color = TextPrimary,
-                                fontSize = 14.sp
-                            )
-                        }
+                    MuscleGroup.entries.forEach { group ->
+                        Chip(
+                            text = group.displayName,
+                            isSelected = selectedMuscleGroups.contains(group),
+                            onClick = {
+                                selectedMuscleGroups = if (selectedMuscleGroups.contains(group)) {
+                                    selectedMuscleGroups - group
+                                } else {
+                                    selectedMuscleGroups + group
+                                }
+                            }
+                        )
                     }
                 }
             }
 
-            // Exercise type dropdown
+            // Тип
             item {
                 Text(
                     "Тип упражнения",
                     color = TextSecondary,
                     fontSize = 14.sp,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceVariant)
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        selectedType,
-                        color = TextPrimary,
-                        fontSize = 16.sp
-                    )
-                }
-            }
-
-            // Type chips
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     exerciseTypes.forEach { type ->
-                        val selected = type == selectedType
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (selected) PrimaryRed else SurfaceVariant)
-                                .clickable { selectedType = type }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                type,
-                                color = if (selected) Color.White else TextPrimary,
-                                fontSize = 14.sp
-                            )
-                        }
+                        Chip(
+                            text = type,
+                            isSelected = type == selectedType,
+                            onClick = { selectedType = type }
+                        )
                     }
                 }
             }
 
-            // Description
+            // Описание
             item {
                 Text(
                     "Описание упражнения",
@@ -238,67 +202,40 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                OutlinedTextField(
+                TextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = { Text("Введите описание", color = TextSecondary) },
-                    colors = textFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
+                    placeholder = "Введите описание",
+                    minLines = 4,
+                    singleLine = false
                 )
             }
 
-            // Save button
+            // Сохранить
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceVariant)
-                        .clickable { /* Save exercise */ }
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Добавить упражнение",
-                        color = TextPrimary,
-                        fontSize = 16.sp
-                    )
-                }
+                Button(
+                    text = "Сохранить изменения",
+                    onClick = {
+                        viewModel.updateTemplate(exerciseId, name, description, selectedMuscleGroups)
+                        navController.navigateUp()
+                    },
+                    isPrimary = false
+                )
             }
 
-            // Delete button
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(PrimaryRed)
-                        .clickable { /* Delete exercise */ }
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Удалить упражнение",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
+            // Удалить
+            if (exerciseId.isNotBlank()) {
+                item {
+                    DangerButton(
+                        text = "Удалить упражнение",
+                        onClick = {
+                            viewModel.deleteTemplate(exerciseId)
+                            navController.navigateUp()
+                        }
                     )
                 }
             }
         }
     }
 }
-
-@Composable
-private fun textFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary,
-    focusedBorderColor = PrimaryRed,
-    unfocusedBorderColor = SurfaceVariant,
-    focusedContainerColor = SurfaceVariant,
-    unfocusedContainerColor = SurfaceVariant
-)

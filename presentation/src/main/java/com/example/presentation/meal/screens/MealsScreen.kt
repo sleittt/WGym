@@ -21,9 +21,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -42,21 +39,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.domain.model.meal.Meal
 import com.example.domain.model.meal.MealType
+import com.example.presentation.ui.components.Card
+import com.example.presentation.ui.components.CircularProgress
+import com.example.presentation.ui.components.EmptyListState
+import com.example.presentation.ui.components.LoadingIndicator
+import com.example.presentation.meal.viewmodels.MealsViewModel
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.PrimaryRed
 import com.example.presentation.ui.theme.Surface
 import com.example.presentation.ui.theme.SurfaceVariant
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
-import com.example.presentation.meal.viewmodels.MealsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,15 +64,13 @@ fun MealsScreen(
     viewModel: MealsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedPeriod by remember { mutableStateOf("День") } // День, Неделя, Месяц
+    var selectedPeriod by remember { mutableStateOf("День") }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "Питание",
                             color = TextPrimary,
@@ -81,7 +78,6 @@ fun MealsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        // Period selector dropdown
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -131,63 +127,57 @@ fun MealsScreen(
         },
         containerColor = Background
     ) { padding ->
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(padding)
-        ) {
-            // Nutrition summary card with circular progress
-            item {
-                NutritionDaySummaryCard(
-                    current = 1300,
-                    goal = 2000,
-                    protein = 80f,
-                    proteinGoal = 150f,
-                    fat = 45f,
-                    fatGoal = 70f,
-                    carbs = 120f,
-                    carbsGoal = 250f
-                )
-            }
-
-            // Period selector (Day/Week/Month)
-            item {
-                PeriodSelector(
-                    selected = selectedPeriod,
-                    onSelect = { selectedPeriod = it }
-                )
-            }
-
-            // Meal cards
-            MealType.entries.forEach { mealType ->
-                val meal = uiState.meals.find { it.type == mealType }
+        if (uiState.isLoading && uiState.meals.isEmpty()) {
+            LoadingIndicator(modifier = Modifier.padding(padding))
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(padding)
+            ) {
+                // Nutrition summary with REAL calculated data
                 item {
-                    MealCard(
-                        mealType = mealType,
-                        meal = meal,
-                        onAddFood = { viewModel.openAddFoodDialog(mealType) },
-                        onRemoveFood = { foodItemId ->
-                            meal?.let { viewModel.removeFood(it.id, foodItemId) }
-                        }
+                    NutritionDaySummaryCard(
+                        currentCalories = uiState.dailySummary.calories.toInt(),
+                        goalCalories = uiState.calorieGoal,
+                        protein = uiState.dailySummary.protein.toFloat(),
+                        proteinGoal = uiState.proteinGoal,
+                        fat = uiState.dailySummary.fats.toFloat(),
+                        fatGoal = uiState.fatGoal,
+                        carbs = uiState.dailySummary.carbs.toFloat(),
+                        carbsGoal = uiState.carbsGoal
                     )
                 }
-            }
 
-            // Add entry button
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceVariant)
-                        .clickable { /* Add entry */ }
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Добавить запись",
-                        color = TextPrimary,
-                        fontSize = 16.sp
+                // Period selector
+                item {
+                    PeriodSelector(
+                        selected = selectedPeriod,
+                        onSelect = { selectedPeriod = it }
+                    )
+                }
+
+                // Meal cards with real data
+                MealType.entries.forEach { mealType ->
+                    val meal = uiState.meals.find { it.type == mealType }
+                    item {
+                        MealCard(
+                            mealType = mealType,
+                            meal = meal,
+                            foodItems = uiState.foodItems,
+                            onAddFood = { viewModel.openAddFoodDialog(mealType) },
+                            onRemoveFood = { foodItemId ->
+                                meal?.let { viewModel.removeFood(it.id, foodItemId) }
+                            }
+                        )
+                    }
+                }
+
+                // Add entry button
+                item {
+                    EmptyListState(
+                        text = "Добавить запись",
+                        onClick = { /* Add entry */ }
                     )
                 }
             }
@@ -197,8 +187,8 @@ fun MealsScreen(
 
 @Composable
 fun NutritionDaySummaryCard(
-    current: Int,
-    goal: Int,
+    currentCalories: Int,
+    goalCalories: Int,
     protein: Float,
     proteinGoal: Float,
     fat: Float,
@@ -207,72 +197,53 @@ fun NutritionDaySummaryCard(
     carbsGoal: Float
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shapeRadius = 20.dp,
+        padding = 20.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Left - consumed
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Сегодня", color = TextSecondary, fontSize = 14.sp)
-                    Text(
-                        "$current ккал",
-                        color = TextPrimary,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "${protein.toInt()}г-${fat.toInt()}г-${carbs.toInt()}г",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
+            // Left - consumed
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Сегодня", color = TextSecondary, fontSize = 14.sp)
+                Text(
+                    "$currentCalories ккал",
+                    color = TextPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "${protein.toInt()}г-${fat.toInt()}г-${carbs.toInt()}г",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+            }
 
-                // Center - circular progress
-                Box(contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        progress = { current.toFloat() / goal.toFloat() },
-                        modifier = Modifier.size(100.dp),
-                        color = PrimaryRed,
-                        trackColor = SurfaceVariant,
-                        strokeWidth = 8.dp,
-                        strokeCap = StrokeCap.Round
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "$current",
-                            color = TextPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+            // Center - circular progress
+            CircularProgress(
+                current = currentCalories,
+                goal = goalCalories,
+                size = 100.dp,
+                strokeWidth = 8.dp,
+                progressColor = PrimaryRed
+            )
 
-                // Right - goal
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Цель", color = TextSecondary, fontSize = 14.sp)
-                    Text(
-                        "$goal ккал",
-                        color = TextPrimary,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "${proteinGoal.toInt()}г-${fatGoal.toInt()}г-${carbsGoal.toInt()}г",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
+            // Right - goal
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Цель", color = TextSecondary, fontSize = 14.sp)
+                Text(
+                    "$goalCalories ккал",
+                    color = TextPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "${proteinGoal.toInt()}г-${fatGoal.toInt()}г-${carbsGoal.toInt()}г",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
             }
         }
     }
@@ -313,7 +284,8 @@ fun PeriodSelector(
 @Composable
 fun MealCard(
     mealType: MealType,
-    meal: Meal?,
+    meal: com.example.domain.model.meal.Meal?,
+    foodItems: Map<String, com.example.domain.model.meal.FoodItem>,
     onAddFood: () -> Unit,
     onRemoveFood: (String) -> Unit
 ) {
@@ -324,17 +296,14 @@ fun MealCard(
         MealType.SNACK -> Pair("Перекус", "🍎")
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+    // Calculate meal calories from real data
+    val mealCalories = meal?.items?.sumOf { item ->
+        val food = foodItems[item.foodItemId]
+        food?.let { it.caloriesPer100g * (item.amountGrams / 100.0) } ?: 0.0
+    }?.toInt() ?: 0
+
+    Card {
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -349,30 +318,27 @@ fun MealCard(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
+                    if (mealCalories > 0) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "$mealCalories ккал",
+                            color = TextSecondary,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
 
-                // Add button
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceVariant)
-                        .clickable { onAddFood() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Добавить",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             if (meal != null && meal.items.isNotEmpty()) {
                 meal.items.forEach { item ->
+                    val food = foodItems[item.foodItemId]
+                    val itemCalories = food?.let {
+                        (it.caloriesPer100g * (item.amountGrams / 100.0)).toInt()
+                    } ?: 0
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -382,7 +348,7 @@ fun MealCard(
                     ) {
                         Column {
                             Text(
-                                item.foodItemId,
+                                food?.name ?: item.foodItemId,
                                 color = TextPrimary,
                                 fontSize = 15.sp
                             )
@@ -394,7 +360,7 @@ fun MealCard(
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "228 ккал",
+                                "$itemCalories ккал",
                                 color = TextSecondary,
                                 fontSize = 14.sp
                             )

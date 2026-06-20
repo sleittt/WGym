@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.workout.ExerciseTemplate
 import com.example.domain.model.workout.MuscleGroup
-import com.example.domain.usecase.workout.*
+import com.example.domain.usecase.workout.CreateExerciseTemplateUseCase
+import com.example.domain.usecase.workout.DeleteExerciseTemplateUseCase
+import com.example.domain.usecase.workout.GetExerciseTemplateByIdUseCase
+import com.example.domain.usecase.workout.GetExerciseTemplatesUseCase
+import com.example.domain.usecase.workout.UpdateExerciseTemplateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +35,12 @@ class ExerciseTemplatesViewModel @Inject constructor(
         val selectedTemplate: ExerciseTemplate? = null,
         val isEditDialogOpen: Boolean = false,
         val filterMuscleGroup: MuscleGroup? = null
-    )
+    ) {
+        val filteredTemplates: List<ExerciseTemplate>
+            get() = if (filterMuscleGroup != null) {
+                templates.filter { it.muscleGroups.contains(filterMuscleGroup) }
+            } else templates
+    }
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
