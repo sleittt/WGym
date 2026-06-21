@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,8 +49,8 @@ import androidx.navigation.NavController
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.Button
 import com.example.presentation.ui.components.Card
-import com.example.presentation.ui.components.DropdownMenu
 import com.example.presentation.ui.components.DropdownAction
+import com.example.presentation.ui.components.DropdownMenu
 import com.example.presentation.ui.components.LoadingIndicator
 import com.example.presentation.ui.components.TextField
 import com.example.presentation.ui.theme.Background
@@ -111,6 +112,15 @@ fun WorkoutTemplateDetailScreen(
                 },
                 actions = {
                     if (!uiState.isNew) {
+                        // Кнопка закрепления
+                        IconButton(onClick = { viewModel.togglePin() }) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = if (uiState.isPinned) "Открепить" else "Закрепить",
+                                tint = if (uiState.isPinned) PrimaryRed else TextSecondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                         DropdownMenu(
                             actions = listOf(
                                 DropdownAction("Дублировать", onClick = { viewModel.duplicate() }),

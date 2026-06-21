@@ -109,17 +109,15 @@ class WorkoutRepositoryImpl @Inject constructor(
 
     // --- Workout Templates ---
     override fun observeWorkoutTemplates(): Flow<List<WorkoutTemplate>> {
-        return workoutTemplateDao.observeAll().map { list ->
-            list.map { templateEntity ->
-                val exercises = exerciseDao.getByTemplateId(templateEntity.id)
+        return workoutTemplateDao.observeAllWithExercises().map { list ->
+            list.map { templateWithExercises ->
                 val templates = exerciseTemplateDao.getAll().associateBy { it.id }
-                val domainExercises = exercises.map { exEntity ->
-                    val sets = setDao.getByExerciseId(exEntity.id)
-                    val template = templates[exEntity.exerciseTemplateId]
+                val domainExercises = templateWithExercises.exercises.map { exWithSets ->
+                    val template = templates[exWithSets.exercise.exerciseTemplateId]
                         ?: throw IllegalStateException("Template not found")
-                    ExerciseMapper.toDomain(exEntity, sets, template)
+                    ExerciseMapper.toDomain(exWithSets, template)
                 }
-                WorkoutTemplateMapper.toDomain(templateEntity, domainExercises)
+                WorkoutTemplateMapper.toDomain(templateWithExercises.template, domainExercises)
             }
         }
     }
@@ -187,6 +185,9 @@ class WorkoutRepositoryImpl @Inject constructor(
         workoutTemplateDao.incrementUseCount(template.id)
     }
 
+    override suspend fun setTemplatePinned(id: String, isPinned: Boolean) {
+        workoutTemplateDao.setPinned(id.toInt(), isPinned)
+    }
     // --- Private helpers ---
     private suspend fun mapWorkoutWithExercises(workoutWithExercises: WorkoutWithExercises): Workout {
         val templates = exerciseTemplateDao.getAll().associateBy { it.id }
@@ -200,7 +201,7 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
         val domainTemplate = templateEntity?.let { entity ->
             WorkoutTemplateMapper.toDomain(entity, emptyList())
-        } ?: WorkoutTemplate(0, "", 0, emptyList(), false)
+        } ?: WorkoutTemplate(0, "", 0, false,emptyList(), false)
 
         return WorkoutMapper.toDomain(workoutWithExercises.workout, domainTemplate, domainExercises)
     }

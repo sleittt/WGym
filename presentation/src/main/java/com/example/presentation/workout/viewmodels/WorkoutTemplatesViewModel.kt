@@ -38,7 +38,7 @@ class WorkoutTemplatesViewModel @Inject constructor(
     private fun loadTemplates() {
         getWorkoutTemplates()
             .onEach { templates ->
-                val pinned = templates.filter { it.useCount > 0 }.take(2)
+                val pinned = templates.filter { it.isPinned }.take(2)  // <-- isPinned вместо useCount > 0
                 _uiState.update { it.copy(
                     templates = templates,
                     pinnedTemplates = pinned,

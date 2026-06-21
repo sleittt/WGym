@@ -17,6 +17,9 @@ interface WorkoutTemplateDao {
     @Query("SELECT * FROM workout_templates WHERE isDeleted = 0 ORDER BY useCount DESC")
     fun observeAll(): Flow<List<WorkoutTemplateEntity>>
 
+    @Transaction
+    @Query("SELECT * FROM workout_templates WHERE isDeleted = 0 ORDER BY useCount DESC")
+    fun observeAllWithExercises(): Flow<List<WorkoutTemplateWithExercises>>
     @Query("SELECT * FROM workout_templates WHERE id = :id")
     suspend fun getById(id: Int): WorkoutTemplateEntity?
 
@@ -41,4 +44,7 @@ interface WorkoutTemplateDao {
 
     @Query("SELECT * FROM workout_templates WHERE sync_status != 'SYNCED'")
     suspend fun getUnsynced(): List<WorkoutTemplateEntity>
+
+    @Query("UPDATE workout_templates SET isPinned = :isPinned WHERE id = :id")
+    suspend fun setPinned(id: Int, isPinned: Boolean)
 }

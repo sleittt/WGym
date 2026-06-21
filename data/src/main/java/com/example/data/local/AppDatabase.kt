@@ -44,7 +44,7 @@ import com.example.data.local.entity.workout.WorkoutTemplateEntity
         PostDraftEntity::class,
         CommentEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

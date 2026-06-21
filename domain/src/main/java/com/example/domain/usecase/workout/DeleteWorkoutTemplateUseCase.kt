@@ -12,7 +12,7 @@ class DeleteWorkoutTemplateUseCase @Inject constructor(
             ?: return Result.failure(IllegalArgumentException("Шаблон не найден"))
         if (existing.isDeleted) return Result.failure(IllegalStateException("Шаблон уже удален"))
         return try {
-            repository.deleteExerciseTemplate(id)
+            repository.deleteTemplate(id)
             Result.success(Unit)
         } catch (e: Exception){
             Result.failure(e)

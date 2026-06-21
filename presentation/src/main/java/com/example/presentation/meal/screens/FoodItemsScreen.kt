@@ -1,28 +1,32 @@
 package com.example.presentation.meal.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,15 +43,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.domain.model.meal.FoodItem
-import com.example.presentation.ui.components.Card
-import com.example.presentation.ui.components.DropdownMenu
+import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.LoadingIndicator
-import com.example.presentation.ui.components.MacroBadge
-import com.example.presentation.ui.components.MacroColors
-import com.example.presentation.meal.viewmodels.FoodItemsViewModel
-import com.example.presentation.ui.components.DropdownAction
-import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.components.TextField
+import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.PrimaryRed
 import com.example.presentation.ui.theme.Surface
@@ -58,260 +58,269 @@ import com.example.presentation.ui.theme.TextSecondary
 @Composable
 fun FoodItemsScreen(
     navController: NavController,
+    selectMode: Boolean = false,
+    mealType: String? = null,
+    date: String? = null,
     viewModel: FoodItemsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = "Продукты",
+                title = if (selectMode) "Выберите продукт" else "Продукты",
                 navController = navController,
                 containerColor = Background
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    viewModel.selectFoodItem(
-                        FoodItem(
-                            id = "",
-                            name = "",
-                            caloriesPer100g = 0.0,
-                            proteinPer100g = 0.0,
-                            fatsPer100g = 0.0,
-                            carbsPer100g = 0.0
-                        )
-                    )
-                },
-                containerColor = PrimaryRed,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить")
+            if (!selectMode) {
+                FloatingActionButton(
+                    onClick = { navController.navigate(Screen.AddFoodItem.route) },
+                    containerColor = PrimaryRed,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Добавить продукт")
+                }
             }
         },
         containerColor = Background
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
-            // Search bar
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Поиск продуктов...", color = TextSecondary) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        tint = TextSecondary
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            // Поисковая строка
+            TextField(
+                value = searchQuery,
+                onValueChange = { 
+                    searchQuery = it
+                    viewModel.search(it)
                 },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    focusedBorderColor = PrimaryRed,
-                    unfocusedBorderColor = SurfaceVariant,
-                    focusedContainerColor = Surface,
-                    unfocusedContainerColor = Surface
-                ),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                placeholder = "Поиск",
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary)
+                },
+                modifier = Modifier.padding(vertical = 8.dp)
             )
 
-            if (uiState.isLoading && uiState.filteredItems.isEmpty()) {
-                LoadingIndicator()
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.filteredItems) { item ->
-                        FoodItemListCard(
-                            item = item,
-                            onEdit = { viewModel.selectFoodItem(item) },
-                            onDelete = { viewModel.deleteFoodItemById(item.id) }
-                        )
-                    }
-                }
-            }
-        }
+            Spacer(modifier = Modifier.height(8.dp))
 
-        if (uiState.isEditDialogOpen) {
-            FoodItemEditDialog(
-                item = uiState.selectedFoodItem,
-                onDismiss = { viewModel.dismissDialog() },
-                onConfirm = { name, description, calories, protein, fats, carbs, serving ->
-                    if (uiState.selectedFoodItem?.id.isNullOrBlank()) {
-                        viewModel.createFoodItem(name, description, calories, protein, fats, carbs, serving)
+            // Контент
+            Box(modifier = Modifier.weight(1f)) {
+                if (uiState.isLoading && uiState.filteredItems.isEmpty()) {
+                    LoadingIndicator()
+                } else {
+                    val filtered = uiState.filteredItems.filter {
+                        it.name.contains(searchQuery, ignoreCase = true)
+                    }
+
+                    if (filtered.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Нет продуктов",
+                                color = TextSecondary,
+                                fontSize = 16.sp
+                            )
+                        }
                     } else {
-                        viewModel.updateFoodItem(
-                            uiState.selectedFoodItem!!.id,
-                            name, description, calories, protein, fats, carbs, serving
-                        )
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Секция "Последнее" - если есть recently used
+                            val recent = uiState.recentItems.filter { 
+                                it.name.contains(searchQuery, ignoreCase = true) 
+                            }
+                            if (recent.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        "Последнее: Утро",
+                                        color = TextPrimary,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                }
+                                items(recent) { item ->
+                                    FoodItemListRow(
+                                        item = item,
+                                        selectMode = selectMode,
+                                        onClick = {
+                                            if (selectMode) {
+                                                navController.previousBackStackEntry
+                                                    ?.savedStateHandle
+                                                    ?.set("selected_food_item_id", item.id)
+                                                navController.navigateUp()
+                                            } else {
+                                                navController.navigate(
+                                                    Screen.FoodItems.route.replace("food_items", "food_item_detail/${item.id}")
+                                                )
+                                            }
+                                        },
+                                        onAdd = {
+                                            navController.previousBackStackEntry
+                                                ?.savedStateHandle
+                                                ?.set("selected_food_item_id", item.id)
+                                            navController.navigateUp()
+                                        }
+                                    )
+                                }
+                            }
+
+                            // Секция "Остальное"
+                            val other = filtered.filter { !recent.contains(it) }
+                            if (other.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        if (recent.isNotEmpty()) "Остальное" else "",
+                                        color = TextPrimary,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                }
+                                items(other) { item ->
+                                    FoodItemListRow(
+                                        item = item,
+                                        selectMode = selectMode,
+                                        onClick = {
+                                            if (selectMode) {
+                                                navController.previousBackStackEntry
+                                                    ?.savedStateHandle
+                                                    ?.set("selected_food_item_id", item.id)
+                                                navController.navigateUp()
+                                            } else {
+                                                navController.navigate(
+                                                    Screen.FoodItems.route.replace("food_items", "food_item_detail/${item.id}")
+                                                )
+                                            }
+                                        },
+                                        onAdd = {
+                                            navController.previousBackStackEntry
+                                                ?.savedStateHandle
+                                                ?.set("selected_food_item_id", item.id)
+                                            navController.navigateUp()
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            )
-        }
-    }
-}
+            }
 
-@Composable
-fun FoodItemListCard(
-    item: FoodItem,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        item.name,
-                        color = TextPrimary,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (item.description.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
+            // Кнопка "Добавить продукт" + камера
+            if (!selectMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceVariant)
+                            .clickable { navController.navigate(Screen.AddFoodItem.route) }
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            item.description,
-                            color = TextSecondary,
-                            fontSize = 13.sp,
-                            maxLines = 1
+                            "Добавить продукт",
+                            color = TextPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceVariant)
+                            .clickable { /* TODO: Camera/Scanner */ },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Камера",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
-
-                DropdownMenu(
-                    actions = listOf(
-                        DropdownAction("Редактировать", onClick = onEdit),
-                        DropdownAction("Удалить", isDanger = true, onClick = onDelete)
-                    )
-                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Macros row with real data
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                MacroBadge("К", "${item.caloriesPer100g.toInt()}", MacroColors.Calories)
-                MacroBadge("Б", "${item.proteinPer100g.toInt()}г", MacroColors.Protein)
-                MacroBadge("Ж", "${item.fatsPer100g.toInt()}г", MacroColors.Fat)
-                MacroBadge("У", "${item.carbsPer100g.toInt()}г", MacroColors.Carbs)
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                "Порция: ${item.servingDefaultGrams.toInt()}г",
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
         }
     }
 }
 
 @Composable
-fun FoodItemEditDialog(
-    item: FoodItem?,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String, Double, Double, Double, Double, Double) -> Unit
+fun FoodItemListRow(
+    item: FoodItem,
+    selectMode: Boolean,
+    onClick: () -> Unit,
+    onAdd: () -> Unit
 ) {
-    var name by remember { mutableStateOf(item?.name ?: "") }
-    var description by remember { mutableStateOf(item?.description ?: "") }
-    var calories by remember { mutableStateOf(item?.caloriesPer100g?.toString() ?: "") }
-    var protein by remember { mutableStateOf(item?.proteinPer100g?.toString() ?: "") }
-    var fats by remember { mutableStateOf(item?.fatsPer100g?.toString() ?: "") }
-    var carbs by remember { mutableStateOf(item?.carbsPer100g?.toString() ?: "") }
-    var serving by remember { mutableStateOf(item?.servingDefaultGrams?.toString() ?: "100") }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    item.name,
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "${item.caloriesPer100g.toInt()} ккал - ${item.proteinPer100g.toInt()}Б-${item.fatsPer100g.toInt()}Ж-${item.carbsPer100g.toInt()}У",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Surface,
-        title = {
-            Text(
-                if (item?.id.isNullOrBlank()) "Новый продукт" else "Редактировать продукт",
-                color = TextPrimary
-            )
-        },
-        text = {
-            Column {
-                TextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = "Название"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "${item.caloriesPer100g.toInt()} ккал",
+                    color = TextSecondary,
+                    fontSize = 14.sp
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                TextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = "Описание"
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row {
-                    TextField(
-                        value = calories,
-                        onValueChange = { calories = it },
-                        label = "Ккал",
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TextField(
-                        value = serving,
-                        onValueChange = { serving = it },
-                        label = "Порция",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Row {
-                    TextField(
-                        value = protein,
-                        onValueChange = { protein = it },
-                        label = "Белки",
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TextField(
-                        value = fats,
-                        onValueChange = { fats = it },
-                        label = "Жиры",
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    TextField(
-                        value = carbs,
-                        onValueChange = { carbs = it },
-                        label = "Углеводы",
-                        modifier = Modifier.weight(1f)
-                    )
+                if (selectMode) {
+                    IconButton(
+                        onClick = onAdd,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Добавить",
+                            tint = PrimaryRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        name, description,
-                        calories.toDoubleOrNull() ?: 0.0,
-                        protein.toDoubleOrNull() ?: 0.0,
-                        fats.toDoubleOrNull() ?: 0.0,
-                        carbs.toDoubleOrNull() ?: 0.0,
-                        serving.toDoubleOrNull() ?: 100.0
-                    )
-                }
-            ) { Text("Сохранить", color = PrimaryRed) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена", color = TextSecondary) }
         }
-    )
+    }
 }

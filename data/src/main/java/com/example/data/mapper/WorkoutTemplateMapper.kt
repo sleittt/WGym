@@ -11,6 +11,7 @@ object WorkoutTemplateMapper {
         id = entity.id,
         name = entity.name,
         useCount = entity.useCount,
+        isPinned = entity.isPinned,  // <-- ДОБАВИТЬ
         exercise = exercises,
         isDeleted = entity.isDeleted
     )
@@ -20,6 +21,7 @@ object WorkoutTemplateMapper {
         sync = sync,
         name = domain.name,
         useCount = domain.useCount,
+        isPinned = domain.isPinned,  // <-- ДОБАВИТЬ
         isDeleted = domain.isDeleted
     )
 }

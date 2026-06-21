@@ -12,6 +12,7 @@ import com.example.domain.usecase.workout.CreateWorkoutTemplateUseCase
 import com.example.domain.usecase.workout.DeleteWorkoutTemplateUseCase
 import com.example.domain.usecase.workout.GetExerciseTemplateByIdUseCase
 import com.example.domain.usecase.workout.GetWorkoutTemplateByIdUseCase
+import com.example.domain.usecase.workout.ToggleWorkoutTemplatePinUseCase
 import com.example.domain.usecase.workout.UpdateWorkoutTemplateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
     private val createWorkoutTemplate: CreateWorkoutTemplateUseCase,
     private val updateWorkoutTemplate: UpdateWorkoutTemplateUseCase,
     private val deleteWorkoutTemplate: DeleteWorkoutTemplateUseCase,
+    private val togglePin: ToggleWorkoutTemplatePinUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -38,6 +40,7 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
         val name: String = "",
         val exercises: List<Exercise> = emptyList(),
         val useCount: Int = 0,
+        val isPinned: Boolean = false,
         val isLoading: Boolean = false,
         val isSaving: Boolean = false,
         val error: String? = null,
@@ -70,6 +73,7 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
                             name = template.name,
                             exercises = template.exercise,
                             useCount = template.useCount,
+                            isPinned = template.isPinned,
                             isNew = false,
                             isLoading = false
                         )
@@ -211,5 +215,14 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
 
     fun consumeSaved() {
         _uiState.update { it.copy(saved = false) }
+    }
+
+    fun togglePin() {
+        val state = _uiState.value
+        if (state.isNew) return
+        viewModelScope.launch {
+            togglePin(state.templateId.toString(), !state.isPinned)
+            _uiState.update { it.copy(isPinned = !it.isPinned) }
+        }
     }
 }

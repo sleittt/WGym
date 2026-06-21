@@ -2,7 +2,6 @@ package com.example.presentation.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -11,6 +10,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.presentation.HomeScreen
+import com.example.presentation.meal.screens.FoodItemsScreen
+import com.example.presentation.meal.screens.NutritionScreen
 import com.example.presentation.workout.screens.ActiveWorkoutScreen
 import com.example.presentation.workout.screens.ExerciseCreateScreen
 import com.example.presentation.workout.screens.ExerciseDetailScreen
@@ -36,7 +37,7 @@ fun AppNavHost(
             }
 
             composable(
-                Screen.WorkoutTemplateDetail.route,
+                route = Screen.WorkoutTemplateDetail.route,
                 arguments = listOf(navArgument("templateId") { type = NavType.StringType })
             ) { backStackEntry ->
                 WorkoutTemplateDetailScreen(
@@ -46,7 +47,7 @@ fun AppNavHost(
             }
 
             composable(
-                Screen.ActiveWorkout.route,
+                route = Screen.ActiveWorkout.route,
                 arguments = listOf(navArgument("templateId") { type = NavType.StringType })
             ) { backStackEntry ->
                 ActiveWorkoutScreen(
@@ -56,11 +57,13 @@ fun AppNavHost(
             }
 
             composable(
-                Screen.ExerciseTemplates.route,
-                arguments = listOf(navArgument("selectMode") {
-                    type = NavType.BoolType
-                    defaultValue = false
-                })
+                route = Screen.ExerciseTemplates.route,
+                arguments = listOf(
+                    navArgument("selectMode") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    }
+                )
             ) { backStackEntry ->
                 val selectMode = backStackEntry.arguments?.getBoolean("selectMode") ?: false
                 ExerciseTemplatesScreen(
@@ -70,7 +73,7 @@ fun AppNavHost(
             }
 
             composable(
-                Screen.ExerciseDetail.route,
+                route = Screen.ExerciseDetail.route,
                 arguments = listOf(navArgument("exerciseId") { type = NavType.StringType })
             ) { backStackEntry ->
                 ExerciseDetailScreen(
@@ -81,6 +84,39 @@ fun AppNavHost(
 
             composable(Screen.ExerciseCreate.route) {
                 ExerciseCreateScreen(navController)
+            }
+
+            // ===== NUTRITION SCREENS =====
+            composable(Screen.Nutrition.route) {
+                NutritionScreen(navController = navController)
+            }
+
+            composable(
+                route = Screen.FoodItems.route,
+                arguments = listOf(
+                    navArgument("selectMode") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    },
+                    navArgument("mealType") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument("date") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    }
+                )
+            ) { backStackEntry ->
+                val selectMode = backStackEntry.arguments?.getBoolean("selectMode") ?: false
+                val mealType = backStackEntry.arguments?.getString("mealType") ?: ""
+                val date = backStackEntry.arguments?.getString("date") ?: ""
+                FoodItemsScreen(
+                    navController = navController,
+                    selectMode = selectMode,
+                    mealType = mealType,
+                    date = date
+                )
             }
 
             composable(Screen.Statistics.route) { /* StatisticsScreen(navController) */ }

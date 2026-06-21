@@ -1,6 +1,5 @@
 package com.example.presentation.ui.components
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Home
@@ -13,7 +12,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -44,13 +42,22 @@ val bottomNavItems = listOf(
     BottomNavItem.Profile
 )
 
+val bottomNavRoutes = setOf(
+    Screen.Home.route,
+    Screen.WorkoutTemplates.route,
+    Screen.Nutrition.route,
+    Screen.Statistics.route,
+    Screen.Settings.route
+)
+
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    if (currentRoute != null && currentRoute !in bottomNavRoutes) return
+
     NavigationBar(
-        modifier = Modifier.fillMaxWidth(),
         containerColor = Surface,
         tonalElevation = 0.dp
     ) {
@@ -72,9 +79,9 @@ fun BottomNavigationBar(navController: NavController) {
                 },
                 selected = selected,
                 onClick = {
-                    if (currentRoute != item.route) {
+                    if (!selected) {
                         navController.navigate(item.route) {
-                            popUpTo(Screen.Home.route) { saveState = true }
+                            popUpTo(0) { inclusive = true }  // выкидываем ВСЁ
                             launchSingleTop = true
                             restoreState = true
                         }

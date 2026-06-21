@@ -27,4 +27,5 @@ interface WorkoutRepository {
     suspend fun updateTemplate(id: String, updated: WorkoutTemplate) : WorkoutTemplate
     suspend fun deleteTemplate(id: String)
     suspend fun incrementTemplateUseCount(template: WorkoutTemplate)
+    suspend fun setTemplatePinned(id: String, isPinned: Boolean)
 }
