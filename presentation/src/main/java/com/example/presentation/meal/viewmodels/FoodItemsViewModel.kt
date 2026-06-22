@@ -1,4 +1,4 @@
-package com.example.presentation.meal.screens
+package com.example.presentation.meal.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

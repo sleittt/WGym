@@ -54,6 +54,7 @@ import com.example.presentation.ui.components.DropdownMenu
 import com.example.presentation.ui.components.LoadingIndicator
 import com.example.presentation.ui.components.TextField
 import com.example.presentation.ui.theme.Background
+import com.example.presentation.ui.theme.PrimaryGreen
 import com.example.presentation.ui.theme.PrimaryRed
 import com.example.presentation.ui.theme.Surface
 import com.example.presentation.ui.theme.SurfaceVariant
@@ -70,7 +71,6 @@ fun WorkoutTemplateDetailScreen(
     val viewModel: WorkoutTemplateDetailViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
-    // Получаем выбранное упражнение из ExerciseTemplatesScreen (режим выбора)
     val selectedExerciseId by navController.currentBackStackEntry
         ?.savedStateHandle
         ?.getStateFlow<String?>("selected_exercise_template_id", null)
@@ -112,7 +112,6 @@ fun WorkoutTemplateDetailScreen(
                 },
                 actions = {
                     if (!uiState.isNew) {
-                        // Кнопка закрепления
                         IconButton(onClick = { viewModel.togglePin() }) {
                             Icon(
                                 Icons.Default.Star,
@@ -157,7 +156,6 @@ fun WorkoutTemplateDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(padding)
             ) {
-                // Название шаблона - редактируемое поле
                 item {
                     Text(
                         "Название шаблона",
@@ -171,7 +169,13 @@ fun WorkoutTemplateDetailScreen(
                     )
                 }
 
-                // Упражнения
+                item {
+                    DefaultRestTimeSelector(
+                        currentSeconds = uiState.defaultRestTimeSeconds,
+                        onTimeSelected = { viewModel.updateDefaultRestTime(it) }
+                    )
+                }
+
                 if (uiState.exercises.isEmpty()) {
                     item {
                         Box(
@@ -198,12 +202,14 @@ fun WorkoutTemplateDetailScreen(
                             onRemoveSet = { setIdx -> viewModel.removeSet(index, setIdx) },
                             onUpdateSet = { setIdx, load, reps ->
                                 viewModel.updateSet(index, setIdx, load, reps)
+                            },
+                            onUpdateSetRestTime = { setIdx, restSeconds ->
+                                viewModel.updateSetRestTime(index, setIdx, restSeconds)
                             }
                         )
                     }
                 }
 
-                // Сохранить
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
@@ -214,7 +220,6 @@ fun WorkoutTemplateDetailScreen(
                     )
                 }
 
-                // Ошибка
                 uiState.error?.let { error ->
                     item {
                         Text(
@@ -231,12 +236,95 @@ fun WorkoutTemplateDetailScreen(
 }
 
 @Composable
+fun DefaultRestTimeSelector(
+    currentSeconds: Int,
+    onTimeSelected: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val presetTimes = listOf(30, 60, 90, 120, 150, 180, 240, 300)
+
+    Column {
+        Text(
+            "Время отдыха по умолчанию",
+            color = TextSecondary,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Surface)
+                .clickable { expanded = !expanded }
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    formatRestTime(currentSeconds),
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    if (expanded) "▲" else "▼",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        if (expanded) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                presetTimes.forEach { seconds ->
+                    val isSelected = seconds == currentSeconds
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) PrimaryGreen else SurfaceVariant
+                            )
+                            .clickable {
+                                onTimeSelected(seconds)
+                                expanded = false
+                            }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            formatRestTime(seconds),
+                            color = if (isSelected) Color.White else TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatRestTime(seconds: Int): String {
+    return String.format("%d:%02d", seconds / 60, seconds % 60)
+}
+
+@Composable
 fun ExerciseEditorCard(
     exercise: com.example.domain.model.workout.Exercise,
     onRemoveExercise: () -> Unit,
     onAddSet: () -> Unit,
     onRemoveSet: (Int) -> Unit,
-    onUpdateSet: (Int, Float, Int) -> Unit
+    onUpdateSet: (Int, Float, Int) -> Unit,
+    onUpdateSetRestTime: (Int, Int) -> Unit
 ) {
     Card {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -264,7 +352,6 @@ fun ExerciseEditorCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Заголовок таблицы подходов
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -273,13 +360,15 @@ fun ExerciseEditorCard(
                 Text("Пред.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Вес", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Повт.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(50.dp))
+                Text("Отдых", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(50.dp))
                 Spacer(modifier = Modifier.width(24.dp))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Подходы
             exercise.sets.forEachIndexed { setIndex, set ->
+                var showRestPicker by remember { mutableStateOf(false) }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -329,6 +418,22 @@ fun ExerciseEditorCard(
                         )
                     }
 
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SurfaceVariant)
+                            .clickable { showRestPicker = !showRestPicker }
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            formatRestTime(set.rest.inWholeSeconds.toInt()),
+                            color = TextPrimary,
+                            fontSize = 11.sp
+                        )
+                    }
+
                     IconButton(
                         onClick = { onRemoveSet(setIndex) },
                         modifier = Modifier.size(24.dp)
@@ -341,12 +446,59 @@ fun ExerciseEditorCard(
                         )
                     }
                 }
+
+                if (showRestPicker) {
+                    RestTimePickerRow(
+                        currentSeconds = set.rest.inWholeSeconds.toInt(),
+                        onTimeSelected = { seconds ->
+                            onUpdateSetRestTime(setIndex, seconds)
+                            showRestPicker = false
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             TextButton(onClick = onAddSet) {
                 Text("+ Подход", color = PrimaryRed, fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun RestTimePickerRow(
+    currentSeconds: Int,
+    onTimeSelected: (Int) -> Unit
+) {
+    val presetTimes = listOf(30, 60, 90, 120, 150, 180, 240, 300)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        presetTimes.forEach { seconds ->
+            val isSelected = seconds == currentSeconds
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        if (isSelected) PrimaryGreen else SurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    .clickable { onTimeSelected(seconds) }
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    formatRestTime(seconds),
+                    color = if (isSelected) Color.White else TextPrimary,
+                    fontSize = 10.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
             }
         }
     }

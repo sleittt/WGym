@@ -14,10 +14,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ExerciseDao {
 
-    @Query("SELECT * FROM exercises WHERE workout_id = :workoutId ORDER BY `order`")
+    @Query("SELECT * FROM exercises WHERE workout_id = :workoutId AND isDeleted = 0 ORDER BY `order`")
     fun observeByWorkoutId(workoutId: String): Flow<List<ExerciseEntity>>
 
-    @Query("SELECT * FROM exercises WHERE template_id = :templateId ORDER BY `order`")
+    @Query("SELECT * FROM exercises WHERE template_id = :templateId AND isDeleted = 0 ORDER BY `order`")
     suspend fun getByTemplateId(templateId: Int): List<ExerciseEntity>
 
     @Query("SELECT * FROM exercises WHERE id = :id")
@@ -44,4 +44,17 @@ interface ExerciseDao {
 
     @Query("DELETE FROM exercises WHERE template_id = :templateId")
     suspend fun deleteByTemplateId(templateId: Int)
+
+    // Soft delete
+    @Query("UPDATE exercises SET isDeleted = 1, sync_status = 'PENDING_DELETE' WHERE id = :id")
+    suspend fun softDelete(id: Int)
+
+    @Query("UPDATE exercises SET isDeleted = 1, sync_status = 'PENDING_DELETE' WHERE template_id = :templateId")
+    suspend fun softDeleteByTemplateId(templateId: Int)
+
+    @Query("UPDATE exercises SET isDeleted = 1, sync_status = 'PENDING_DELETE' WHERE exercise_template_id = :exerciseTemplateId")
+    suspend fun softDeleteByExerciseTemplateId(exerciseTemplateId: Int)
+
+    @Query("SELECT * FROM exercises WHERE sync_status != 'SYNCED'")
+    suspend fun getUnsynced(): List<ExerciseEntity>
 }

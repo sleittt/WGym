@@ -1,11 +1,10 @@
 package com.example.presentation.workout.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -42,13 +42,12 @@ import com.example.presentation.ui.components.DangerButton
 import com.example.presentation.ui.components.TextField
 import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.theme.Background
-import com.example.presentation.ui.theme.PrimaryRed
 import com.example.presentation.ui.theme.SurfaceVariant
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
 import com.example.presentation.workout.viewmodels.ExerciseTemplatesViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseDetailScreen(
     navController: NavController,
@@ -64,7 +63,7 @@ fun ExerciseDetailScreen(
     var selectedMuscleGroups by remember(exercise) { mutableStateOf(exercise?.muscleGroups ?: emptyList()) }
     var description by remember(exercise) { mutableStateOf(exercise?.description ?: "") }
 
-    val exerciseTypes = listOf("Силовое", "Кардио", "Растяжка", "Функциональное")
+    val exerciseTypes = listOf("Силовое")
     var selectedType by remember { mutableStateOf("Силовое") }
 
     LaunchedEffect(exerciseId) {
@@ -152,9 +151,11 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MuscleGroup.entries.forEach { group ->
                         Chip(
@@ -180,9 +181,11 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     exerciseTypes.forEach { type ->
                         Chip(

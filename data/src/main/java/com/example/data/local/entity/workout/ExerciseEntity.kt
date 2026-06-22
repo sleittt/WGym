@@ -44,5 +44,6 @@ data class ExerciseEntity(
     @ColumnInfo(name = "template_id") val templateId: Int?,
     @ColumnInfo(name = "exercise_template_id") val exerciseTemplateId: Int,
     val note: String = "",
-    val order: Int
+    val order: Int,
+    val isDeleted: Boolean = false
 )

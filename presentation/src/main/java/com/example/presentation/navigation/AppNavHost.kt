@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.presentation.HomeScreen
+import com.example.presentation.meal.screens.AddFoodItemScreen
 import com.example.presentation.meal.screens.FoodItemsScreen
 import com.example.presentation.meal.screens.NutritionScreen
 import com.example.presentation.workout.screens.ActiveWorkoutScreen
@@ -91,33 +92,13 @@ fun AppNavHost(
                 NutritionScreen(navController = navController)
             }
 
-            composable(
-                route = Screen.FoodItems.route,
-                arguments = listOf(
-                    navArgument("selectMode") {
-                        type = NavType.BoolType
-                        defaultValue = false
-                    },
-                    navArgument("mealType") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("date") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    }
-                )
-            ) { backStackEntry ->
-                val selectMode = backStackEntry.arguments?.getBoolean("selectMode") ?: false
-                val mealType = backStackEntry.arguments?.getString("mealType") ?: ""
-                val date = backStackEntry.arguments?.getString("date") ?: ""
-                FoodItemsScreen(
-                    navController = navController,
-                    selectMode = selectMode,
-                    mealType = mealType,
-                    date = date
-                )
+            composable(Screen.FoodItems.route) {
+                FoodItemsScreen(navController = navController)
             }
+            composable(Screen.AddFoodItem.route) {
+                AddFoodItemScreen(navController = navController)
+            }
+
 
             composable(Screen.Statistics.route) { /* StatisticsScreen(navController) */ }
             composable(Screen.Settings.route) { /* SettingsScreen(navController) */ }

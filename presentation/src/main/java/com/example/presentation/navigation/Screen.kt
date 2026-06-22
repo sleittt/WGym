@@ -17,10 +17,7 @@ sealed class Screen(val route: String) {
     }
     data object AddExerciseToWorkout : Screen("add_exercise_to_workout")
     data object Nutrition : Screen("nutrition")
-    data object FoodItems : Screen("food_items/{selectMode}/{mealType}/{date}") {
-        fun createRoute(selectMode: Boolean = false, mealType: String = "", date: String = "") =
-            "food_items/$selectMode/$mealType/$date"
-    }
+    data object FoodItems : Screen("food_items")
     data object AddFoodItem : Screen("add_food_item")
     data object AddFoodToMeal : Screen("add_food_to_meal")
     data object WorkoutHistory : Screen("workout_history")

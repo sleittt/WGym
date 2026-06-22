@@ -70,19 +70,17 @@ fun NutritionScreen(
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Селектор даты
                     DateSelector(
                         date = selectedDate,
-                        onPreviousDay = { 
-                            viewModel.selectDate(selectedDate.minusDays(1)) 
+                        onPreviousDay = {
+                            viewModel.selectDate(selectedDate.minusDays(1))
                         },
-                        onNextDay = { 
-                            viewModel.selectDate(selectedDate.plusDays(1)) 
+                        onNextDay = {
+                            viewModel.selectDate(selectedDate.plusDays(1))
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Сводка калорий и макросов
                     NutritionSummaryHeader(
                         currentCalories = uiState.currentCalories,
                         goalCalories = uiState.goalCalories,
@@ -93,28 +91,33 @@ fun NutritionScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Секции приёмов пищи
                     uiState.meals.forEach { mealSection ->
                         MealSectionCard(
                             title = mealSection.title,
                             items = mealSection.items,
                             onAddClick = {
-                                navController.navigate(
-                                    Screen.FoodItems.createRoute(
-                                        selectMode = true,
-                                        mealType = mealSection.type.name,
-                                        date = selectedDate.toString()
-                                    )
+                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                    "food_items_select_mode", true
                                 )
+                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                    "food_items_meal_type", mealSection.type.name
+                                )
+                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                    "food_items_date", selectedDate.toString()
+                                )
+                                navController.navigate(Screen.FoodItems.route)
                             },
                             onItemClick = { item ->
-                                navController.navigate(
-                                    Screen.FoodItems.createRoute(
-                                        selectMode = false,
-                                        mealType = mealSection.type.name,
-                                        date = selectedDate.toString()
-                                    )
+                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                    "food_items_select_mode", false
                                 )
+                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                    "food_items_meal_type", mealSection.type.name
+                                )
+                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                    "food_items_date", selectedDate.toString()
+                                )
+                                navController.navigate(Screen.FoodItems.route)
                             },
                             modifier = Modifier
                                 .padding(horizontal = 16.dp, vertical = 8.dp)

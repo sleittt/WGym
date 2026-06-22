@@ -14,18 +14,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,6 +37,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.domain.manager.WorkoutManager
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.EmptyListState
 import com.example.presentation.ui.components.TextField
@@ -66,25 +72,56 @@ fun ActiveWorkoutScreen(
     viewModel: ActiveWorkoutViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
 
     LaunchedEffect(templateId) {
         viewModel.loadTemplate(templateId)
     }
 
+    val activeTimer = uiState.activeRestTimer
+    val isActiveTimerVisible by remember(activeTimer, listState) {
+        derivedStateOf {
+            if (activeTimer == null) return@derivedStateOf true
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            val exerciseItemIndex = if (uiState.templateName.isNotBlank()) {
+                activeTimer.exerciseIndex + 1
+            } else {
+                activeTimer.exerciseIndex
+            }
+            visibleItems.any { it.index == exerciseItemIndex }
+        }
+    }
+
+    val showFloatingTimer = activeTimer != null && activeTimer.isRunning && !isActiveTimerVisible
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Box(
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             uiState.elapsedTimeFormatted,
                             color = TextPrimary,
-                            fontSize = 24.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
+
+                        if (showFloatingTimer) {
+                            Spacer(modifier = Modifier.width(12.dp))
+                            FloatingRestTimer(
+                                timer = activeTimer!!,
+                                onSkip = {
+                                    viewModel.skipRestTimer(
+                                        activeTimer.exerciseIndex,
+                                        activeTimer.setIndex
+                                    )
+                                }
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -125,11 +162,11 @@ fun ActiveWorkoutScreen(
         containerColor = Background
     ) { padding ->
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(padding)
         ) {
-            // Название шаблона
             if (uiState.templateName.isNotBlank()) {
                 item {
                     Text(
@@ -152,9 +189,8 @@ fun ActiveWorkoutScreen(
                             weight = set.weight,
                             reps = set.reps,
                             isCompleted = set.isCompleted,
-                            restTime = set.restTime?.inWholeSeconds?.let { sec ->
-                                String.format("%02d:%02d", sec / 60, sec % 60)
-                            } ?: ""
+                            restProgress = set.restProgress,
+                            restDurationSeconds = set.restDuration.inWholeSeconds.toInt()
                         )
                     },
                     onSetClick = { setIndex ->
@@ -165,6 +201,12 @@ fun ActiveWorkoutScreen(
                     },
                     onRepsChange = { setIndex, reps ->
                         viewModel.updateSetReps(index, setIndex, reps)
+                    },
+                    onSkipRest = { setIndex ->
+                        viewModel.skipRestTimer(index, setIndex)
+                    },
+                    onAdjustRestTime = { setIndex, delta ->
+                        viewModel.adjustRestTime(index, setIndex, delta)
                     }
                 )
             }
@@ -201,13 +243,44 @@ fun ActiveWorkoutScreen(
     }
 }
 
+@Composable
+fun FloatingRestTimer(
+    timer: WorkoutManager.ActiveRestTimer,
+    onSkip: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(PrimaryGreen.copy(alpha = 0.15f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            timer.formattedTime,
+            color = PrimaryGreen,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+        LinearProgressIndicator(
+            progress = { timer.progress.progress.coerceIn(0f, 1f) },
+            modifier = Modifier
+                .width(50.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = PrimaryGreen,
+            trackColor = PrimaryGreen.copy(alpha = 0.2f)
+        )
+    }
+}
+
 data class SetData(
     val setNumber: String,
     val previous: String,
     val weight: String,
     val reps: String,
     val isCompleted: Boolean = false,
-    val restTime: String = ""
+    val restProgress: WorkoutManager.RestProgress = WorkoutManager.RestProgress(),
+    val restDurationSeconds: Int = 90
 )
 
 @Composable
@@ -216,7 +289,9 @@ fun ExerciseCardWithSets(
     sets: List<SetData>,
     onSetClick: (Int) -> Unit,
     onWeightChange: (Int, String) -> Unit,
-    onRepsChange: (Int, String) -> Unit
+    onRepsChange: (Int, String) -> Unit,
+    onSkipRest: (Int) -> Unit,
+    onAdjustRestTime: (Int, Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -237,7 +312,6 @@ fun ExerciseCardWithSets(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -257,6 +331,8 @@ fun ExerciseCardWithSets(
                     onClick = { onSetClick(index) },
                     onWeightChange = { onWeightChange(index, it) },
                     onRepsChange = { onRepsChange(index, it) },
+                    onSkipRest = { onSkipRest(index) },
+                    onAdjustRestTime = { delta -> onAdjustRestTime(index, delta) },
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
@@ -271,6 +347,8 @@ fun SetRow(
     onClick: () -> Unit,
     onWeightChange: (String) -> Unit,
     onRepsChange: (String) -> Unit,
+    onSkipRest: () -> Unit,
+    onAdjustRestTime: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when {
@@ -336,19 +414,124 @@ fun SetRow(
             }
         }
 
-        if (setData.restTime.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(PrimaryGreen)
-            )
+        RestTimerBar(
+            progress = setData.restProgress,
+            isCompleted = setData.isCompleted,
+            onSkip = onSkipRest,
+            onAdjustTime = onAdjustRestTime,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun RestTimerBar(
+    progress: WorkoutManager.RestProgress,
+    isCompleted: Boolean,
+    onSkip: () -> Unit,
+    onAdjustTime: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isRunning = progress.isRunning
+    val hasTimeLeft = progress.remainingSeconds > 0
+
+    val barColor = when {
+        isRunning && hasTimeLeft -> PrimaryGreen
+        isCompleted && !hasTimeLeft -> PrimaryGreen.copy(alpha = 0.5f)
+        else -> TextSecondary.copy(alpha = 0.3f)
+    }
+
+    val bgColor = when {
+        isRunning -> PrimaryGreen.copy(alpha = 0.1f)
+        isCompleted -> PrimaryGreen.copy(alpha = 0.05f)
+        else -> SurfaceVariant.copy(alpha = 0.3f)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RestTimeButton(text = "−", onClick = { onAdjustTime(-15) })
+                Spacer(modifier = Modifier.width(4.dp))
+                RestTimeButton(text = "−−", onClick = { onAdjustTime(-30) })
+            }
+
             Text(
-                setData.restTime,
-                color = PrimaryGreen,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(start = 50.dp, top = 2.dp)
+                if (isRunning) "Отдых: ${progress.formattedTime}"
+                else "Отдых: ${progress.formattedConfiguredTime}",
+                color = if (isRunning) PrimaryGreen else TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = if (isRunning) FontWeight.Medium else FontWeight.Normal
             )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RestTimeButton(text = "+", onClick = { onAdjustTime(15) })
+                Spacer(modifier = Modifier.width(4.dp))
+                RestTimeButton(text = "++", onClick = { onAdjustTime(30) })
+                Spacer(modifier = Modifier.width(8.dp))
+
+                if (isRunning && hasTimeLeft) {
+                    IconButton(onClick = onSkip, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Пропустить отдых",
+                            tint = PrimaryGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.size(24.dp))
+                }
+            }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        val progressValue = when {
+            isRunning -> progress.progress.coerceIn(0f, 1f)
+            isCompleted -> 0f
+            else -> 1f
+        }
+
+        LinearProgressIndicator(
+            progress = { progressValue },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+            color = barColor,
+            trackColor = barColor.copy(alpha = 0.2f)
+        )
+    }
+}
+
+@Composable
+fun RestTimeButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(SurfaceVariant)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            color = TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

@@ -154,16 +154,13 @@ fun ExerciseTemplatesScreen(
                                     template = template,
                                     selectMode = selectMode,
                                     onClick = {
-                                        if (selectMode) {
-                                            navController.previousBackStackEntry
-                                                ?.savedStateHandle
-                                                ?.set("selected_exercise_template_id", template.id.toString())
-                                            navController.navigateUp()
-                                        } else {
-                                            navController.navigate(Screen.ExerciseDetail.createRoute(template.id.toString()))
-                                        }
+                                        // Клик по телу ВСЕГДА открывает детальное окно
+                                        navController.navigate(
+                                            Screen.ExerciseDetail.createRoute(template.id.toString())
+                                        )
                                     },
                                     onAddToWorkout = {
+                                        // Клик по + только в selectMode добавляет в тренировку
                                         navController.previousBackStackEntry
                                             ?.savedStateHandle
                                             ?.set("selected_exercise_template_id", template.id.toString())

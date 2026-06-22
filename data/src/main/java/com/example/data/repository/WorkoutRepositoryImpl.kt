@@ -58,13 +58,16 @@ class WorkoutRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteExerciseTemplate(id: String) {
+        // Каскадный soft delete: сначала soft delete связанных exercises
+        exerciseDao.softDeleteByExerciseTemplateId(id.toInt())
+        // Потом soft delete самого exercise template
         exerciseTemplateDao.softDelete(id.toInt())
     }
 
     // --- Workouts ---
     override fun observeWorkoutHistory(): Flow<List<Workout>> {
         return workoutDao.observeWithExercises().map { list ->
-            list.map { mapWorkoutWithExercises(it) }
+            list.mapNotNull { mapWorkoutWithExercises(it) }
         }
     }
 
@@ -110,14 +113,8 @@ class WorkoutRepositoryImpl @Inject constructor(
     // --- Workout Templates ---
     override fun observeWorkoutTemplates(): Flow<List<WorkoutTemplate>> {
         return workoutTemplateDao.observeAllWithExercises().map { list ->
-            list.map { templateWithExercises ->
-                val templates = exerciseTemplateDao.getAll().associateBy { it.id }
-                val domainExercises = templateWithExercises.exercises.map { exWithSets ->
-                    val template = templates[exWithSets.exercise.exerciseTemplateId]
-                        ?: throw IllegalStateException("Template not found")
-                    ExerciseMapper.toDomain(exWithSets, template)
-                }
-                WorkoutTemplateMapper.toDomain(templateWithExercises.template, domainExercises)
+            list.mapNotNull { templateWithExercises ->
+                mapTemplateWithExercises(templateWithExercises)
             }
         }
     }
@@ -144,7 +141,6 @@ class WorkoutRepositoryImpl @Inject constructor(
                 sync = sync
             )
             val exId = exerciseDao.insert(exEntity).toInt()
-            // Вставляем сеты с правильным exerciseId
             setEntities.forEach { setEntity ->
                 setDao.insert(setEntity.copy(exerciseId = exId, id = 0))
             }
@@ -152,14 +148,12 @@ class WorkoutRepositoryImpl @Inject constructor(
         return draft.copy(id = templateId)
     }
 
-
     override suspend fun updateTemplate(id: String, updated: WorkoutTemplate): WorkoutTemplate {
         val existing = workoutTemplateDao.getById(id.toInt()) ?: throw IllegalStateException("Template not found")
         val sync = SyncMetadataMapper.updatePending(existing.sync)
         val entity = WorkoutTemplateMapper.toEntity(updated.copy(id = id.toInt()), sync)
         workoutTemplateDao.update(entity)
 
-        // Удаляем старые упражнения (сеты удалятся каскадно)
         exerciseDao.deleteByTemplateId(id.toInt())
 
         updated.exercise.forEach { exercise ->
@@ -188,31 +182,44 @@ class WorkoutRepositoryImpl @Inject constructor(
     override suspend fun setTemplatePinned(id: String, isPinned: Boolean) {
         workoutTemplateDao.setPinned(id.toInt(), isPinned)
     }
+
     // --- Private helpers ---
-    private suspend fun mapWorkoutWithExercises(workoutWithExercises: WorkoutWithExercises): Workout {
+    private suspend fun mapWorkoutWithExercises(workoutWithExercises: WorkoutWithExercises): Workout? {
         val templates = exerciseTemplateDao.getAll().associateBy { it.id }
-        val domainExercises = workoutWithExercises.exercises.map { exWithSets ->
+
+        // Фильтруем exercises с удалёнными шаблонами, не крашимся
+        val domainExercises = workoutWithExercises.exercises.mapNotNull { exWithSets ->
             val template = templates[exWithSets.exercise.exerciseTemplateId]
-                ?: throw IllegalStateException("Template not found")
+            if (template == null) {
+                // Шаблон упражнения удалён - пропускаем это упражнение
+                return@mapNotNull null
+            }
             ExerciseMapper.toDomain(exWithSets, template)
         }
+
         val templateEntity = workoutWithExercises.workout.templateId?.let {
             workoutTemplateDao.getById(it)
         }
         val domainTemplate = templateEntity?.let { entity ->
             WorkoutTemplateMapper.toDomain(entity, emptyList())
-        } ?: WorkoutTemplate(0, "", 0, false,emptyList(), false)
+        } ?: WorkoutTemplate(0, "", 0, false, emptyList(), false)
 
         return WorkoutMapper.toDomain(workoutWithExercises.workout, domainTemplate, domainExercises)
     }
 
-    private suspend fun mapTemplateWithExercises(templateWithExercises: WorkoutTemplateWithExercises): WorkoutTemplate {
+    private suspend fun mapTemplateWithExercises(templateWithExercises: WorkoutTemplateWithExercises): WorkoutTemplate? {
         val templates = exerciseTemplateDao.getAll().associateBy { it.id }
-        val domainExercises = templateWithExercises.exercises.map { exWithSets ->
+
+        // Фильтруем exercises с удалёнными шаблонами, не крашимся
+        val domainExercises = templateWithExercises.exercises.mapNotNull { exWithSets ->
             val template = templates[exWithSets.exercise.exerciseTemplateId]
-                ?: throw IllegalStateException("Template not found")
+            if (template == null) {
+                // Шаблон упражнения удалён - пропускаем это упражнение
+                return@mapNotNull null
+            }
             ExerciseMapper.toDomain(exWithSets, template)
         }
+
         return WorkoutTemplateMapper.toDomain(templateWithExercises.template, domainExercises)
     }
 }

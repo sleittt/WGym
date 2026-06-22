@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -31,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.domain.manager.WorkoutManager
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.BottomNavigationBar
 import com.example.presentation.ui.components.Card
@@ -44,26 +47,46 @@ import com.example.presentation.ui.theme.PrimaryRed
 import com.example.presentation.ui.theme.SurfaceVariant
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
+import com.example.presentation.workout.viewmodels.WorkoutManagerViewModel
 import com.example.presentation.workout.viewmodels.WorkoutTemplatesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: WorkoutTemplatesViewModel = hiltViewModel()
-) {
+    viewModel: WorkoutTemplatesViewModel = hiltViewModel(),
+    workoutManagerVm: WorkoutManagerViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val workoutManager = workoutManagerVm.workoutManager
+    val workoutState by workoutManager.workoutState.collectAsState()
+    val hasActiveWorkout = workoutManager.hasActiveWorkout()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "WGym",
-                        color = TextPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "WGym",
+                            color = TextPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        // Таймер активной тренировки в TopAppBar
+                        if (hasActiveWorkout) {
+                            Spacer(modifier = Modifier.width(12.dp))
+                            WorkoutTimerInTopBar(
+                                workoutState = workoutState,
+                                onClick = {
+                                    navController.navigate(Screen.ActiveWorkout.createRoute("0"))
+                                }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Background
@@ -96,7 +119,12 @@ fun HomeScreen(
                     WorkoutTemplateHomeCard(
                         name = template.name,
                         onPlay = {
-                            navController.navigate(Screen.ActiveWorkout.createRoute(template.id.toString()))
+                            if (hasActiveWorkout) {
+                                // Если тренировка уже идёт - просто переходим на экран
+                                navController.navigate(Screen.ActiveWorkout.createRoute("0"))
+                            } else {
+                                navController.navigate(Screen.ActiveWorkout.createRoute(template.id.toString()))
+                            }
                         },
                         onEdit = {
                             navController.navigate(Screen.WorkoutTemplates.route)
@@ -126,6 +154,53 @@ fun HomeScreen(
             ReferencesSection(
                 onExercisesClick = { navController.navigate(Screen.ExerciseTemplates.createRoute(selectMode = false)) },
                 onProductsClick = { navController.navigate(Screen.FoodItems.route) }
+            )
+        }
+    }
+}
+
+@Composable
+fun WorkoutTimerInTopBar(
+    workoutState: WorkoutManager.WorkoutState,
+    onClick: () -> Unit
+) {
+    val activeRestTimer = workoutState.activeRestTimer
+    val isRestTimerRunning = activeRestTimer != null && activeRestTimer.isRunning
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(PrimaryGreen.copy(alpha = 0.15f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isRestTimerRunning) {
+            // Показываем таймер отдыха с прогресс-баром
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    activeRestTimer!!.formattedTime,
+                    color = PrimaryGreen,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                LinearProgressIndicator(
+                    progress = { activeRestTimer.progress.progress.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .width(50.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = PrimaryGreen,
+                    trackColor = PrimaryGreen.copy(alpha = 0.2f)
+                )
+            }
+        } else {
+            // Просто время тренировки
+            Text(
+                workoutState.elapsedTimeFormatted,
+                color = PrimaryGreen,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }

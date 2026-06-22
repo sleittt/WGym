@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
@@ -45,7 +46,8 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
         val isSaving: Boolean = false,
         val error: String? = null,
         val isNew: Boolean = true,
-        val saved: Boolean = false
+        val saved: Boolean = false,
+        val defaultRestTimeSeconds: Int = 90
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -74,6 +76,7 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
                             exercises = template.exercise,
                             useCount = template.useCount,
                             isPinned = template.isPinned,
+                            defaultRestTimeSeconds = template.defaultRestTime.inWholeSeconds.toInt(),
                             isNew = false,
                             isLoading = false
                         )
@@ -91,6 +94,10 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
         _uiState.update { it.copy(name = name) }
     }
 
+    fun updateDefaultRestTime(seconds: Int) {
+        _uiState.update { it.copy(defaultRestTimeSeconds = seconds) }
+    }
+
     fun fetchAndAddExercise(exerciseTemplateId: String) {
         viewModelScope.launch {
             val template = getExerciseTemplateById(exerciseTemplateId)
@@ -102,12 +109,13 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
 
     fun addExercise(exerciseTemplate: ExerciseTemplate) {
         _uiState.update { state ->
+            val restDuration = state.defaultRestTimeSeconds.seconds
             val newExercise = Exercise(
                 id = state.exercises.size,
                 template = exerciseTemplate,
                 note = "",
                 sets = listOf(
-                    Set(id = 0, rest = 90.seconds, load = 0f, reps = 10, type = SetType.NORMAL)
+                    Set(id = 0, rest = restDuration, load = 0f, reps = 10, type = SetType.NORMAL)
                 ),
                 order = state.exercises.size
             )
@@ -130,7 +138,7 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
             val lastSet = exercise.sets.lastOrNull()
             val newSet = Set(
                 id = exercise.sets.size,
-                rest = 90.seconds,
+                rest = lastSet?.rest ?: state.defaultRestTimeSeconds.seconds,
                 load = lastSet?.load ?: 0f,
                 reps = lastSet?.reps ?: 10,
                 type = SetType.NORMAL
@@ -161,6 +169,17 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
         }
     }
 
+    fun updateSetRestTime(exerciseIndex: Int, setIndex: Int, restSeconds: Int) {
+        _uiState.update { state ->
+            val exercises = state.exercises.toMutableList()
+            val exercise = exercises[exerciseIndex]
+            val sets = exercise.sets.toMutableList()
+            sets[setIndex] = sets[setIndex].copy(rest = restSeconds.seconds)
+            exercises[exerciseIndex] = exercise.copy(sets = sets)
+            state.copy(exercises = exercises)
+        }
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.name.isBlank()) {
@@ -179,7 +198,8 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
                 name = state.name,
                 useCount = state.useCount,
                 exercise = state.exercises,
-                isDeleted = false
+                isDeleted = false,
+                defaultRestTime = state.defaultRestTimeSeconds.seconds
             )
             val result = if (state.isNew) {
                 createWorkoutTemplate(template)

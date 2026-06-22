@@ -15,6 +15,7 @@ data class WorkoutTemplateEntity(
     @Embedded val sync: SyncMetadata,
     val name: String,
     val useCount: Int = 0,
-    val isPinned: Boolean = false,  // <-- ДОБАВИТЬ
-    val isDeleted: Boolean = false
+    val isPinned: Boolean = false,
+    val isDeleted: Boolean = false,
+    val defaultRestTimeSeconds: Long = 90
 )

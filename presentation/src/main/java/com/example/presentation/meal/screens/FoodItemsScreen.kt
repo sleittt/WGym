@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,8 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -43,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.domain.model.meal.FoodItem
+import com.example.presentation.meal.viewmodels.FoodItemsViewModel
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.LoadingIndicator
 import com.example.presentation.ui.components.TextField
@@ -58,13 +58,21 @@ import com.example.presentation.ui.theme.TextSecondary
 @Composable
 fun FoodItemsScreen(
     navController: NavController,
-    selectMode: Boolean = false,
-    mealType: String? = null,
-    date: String? = null,
     viewModel: FoodItemsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+
+    // Читаем параметры из savedStateHandle предыдущего экрана
+    val selectMode = navController.previousBackStackEntry
+        ?.savedStateHandle
+        ?.get<Boolean>("food_items_select_mode") ?: false
+    val mealType = navController.previousBackStackEntry
+        ?.savedStateHandle
+        ?.get<String>("food_items_meal_type")
+    val date = navController.previousBackStackEntry
+        ?.savedStateHandle
+        ?.get<String>("food_items_date")
 
     Scaffold(
         topBar = {
@@ -74,18 +82,7 @@ fun FoodItemsScreen(
                 containerColor = Background
             )
         },
-        floatingActionButton = {
-            if (!selectMode) {
-                FloatingActionButton(
-                    onClick = { navController.navigate(Screen.AddFoodItem.route) },
-                    containerColor = PrimaryRed,
-                    contentColor = Color.White,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Добавить продукт")
-                }
-            }
-        },
+
         containerColor = Background
     ) { padding ->
         Column(
@@ -97,7 +94,7 @@ fun FoodItemsScreen(
             // Поисковая строка
             TextField(
                 value = searchQuery,
-                onValueChange = { 
+                onValueChange = {
                     searchQuery = it
                     viewModel.search(it)
                 },
@@ -134,9 +131,8 @@ fun FoodItemsScreen(
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Секция "Последнее" - если есть recently used
-                            val recent = uiState.recentItems.filter { 
-                                it.name.contains(searchQuery, ignoreCase = true) 
+                            val recent = uiState.recentItems.filter {
+                                it.name.contains(searchQuery, ignoreCase = true)
                             }
                             if (recent.isNotEmpty()) {
                                 item {
@@ -159,9 +155,7 @@ fun FoodItemsScreen(
                                                     ?.set("selected_food_item_id", item.id)
                                                 navController.navigateUp()
                                             } else {
-                                                navController.navigate(
-                                                    Screen.FoodItems.route.replace("food_items", "food_item_detail/${item.id}")
-                                                )
+                                                // TODO: navigate to food item detail
                                             }
                                         },
                                         onAdd = {
@@ -174,7 +168,6 @@ fun FoodItemsScreen(
                                 }
                             }
 
-                            // Секция "Остальное"
                             val other = filtered.filter { !recent.contains(it) }
                             if (other.isNotEmpty()) {
                                 item {
@@ -197,9 +190,7 @@ fun FoodItemsScreen(
                                                     ?.set("selected_food_item_id", item.id)
                                                 navController.navigateUp()
                                             } else {
-                                                navController.navigate(
-                                                    Screen.FoodItems.route.replace("food_items", "food_item_detail/${item.id}")
-                                                )
+                                                // TODO: navigate to food item detail
                                             }
                                         },
                                         onAdd = {
@@ -216,49 +207,46 @@ fun FoodItemsScreen(
                 }
             }
 
-            // Кнопка "Добавить продукт" + камера
-            if (!selectMode) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceVariant)
+                        .clickable { navController.navigate(Screen.AddFoodItem.route) }
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceVariant)
-                            .clickable { navController.navigate(Screen.AddFoodItem.route) }
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "Добавить продукт",
-                            color = TextPrimary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceVariant)
-                            .clickable { /* TODO: Camera/Scanner */ },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Камера",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    Text(
+                        "Добавить продукт",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceVariant)
+                        .clickable { /* TODO: Camera/Scanner */ },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Камера",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
