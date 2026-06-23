@@ -21,4 +21,6 @@ interface MealRepository {
     suspend fun updateFoodItem(foodItemId: String, updatedFoodItem: FoodItem): FoodItem
     suspend fun deleteFoodItem(foodItemId: String)
     suspend fun isFoodItemUsed(foodItemId: String): Boolean
+    fun observeMealsInPeriod(startDate: LocalDate, endDate: LocalDate): Flow<List<Meal>>
+    suspend fun getMealsInPeriod(startDate: LocalDate, endDate: LocalDate): List<Meal>
 }

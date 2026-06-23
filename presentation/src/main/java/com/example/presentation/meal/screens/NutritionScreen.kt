@@ -1,10 +1,9 @@
 package com.example.presentation.meal.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,27 +19,40 @@ import com.example.presentation.meal.viewmodels.NutritionViewModel
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.BottomNavigationBar
 import com.example.presentation.ui.components.DateSelector
-import com.example.presentation.ui.components.ErrorState
-import com.example.presentation.ui.components.LoadingIndicator
 import com.example.presentation.ui.components.MealSectionCard
 import com.example.presentation.ui.components.NutritionSummaryHeader
 import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.workout.viewmodels.WorkoutManagerViewModel
+import java.time.LocalDate
 
 @Composable
 fun NutritionScreen(
     navController: NavController,
+    dateString: String? = null,
     viewModel: NutritionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
 
+    // Устанавливаем дату из параметра, если передана
+    if (dateString != null && dateString.isNotBlank()) {
+        try {
+            val parsedDate = LocalDate.parse(dateString)
+            if (parsedDate != selectedDate) {
+                viewModel.selectDate(parsedDate)
+            }
+        } catch (e: Exception) {
+            // ignore invalid date
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = "Питание",
-                navController = navController
+                navController = navController,
+                containerColor = Background
             )
         },
         bottomBar = {
@@ -48,88 +60,46 @@ fun NutritionScreen(
             BottomNavigationBar(navController, workoutManagerVm.workoutManager)
         },
         containerColor = Background
-    ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                LoadingIndicator(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                )
-            }
-            uiState.error != null -> {
-                ErrorState(
-                    message = uiState.error ?: "Ошибка загрузки данных",
-                    onRetry = { viewModel.refresh() },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                )
-            }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    DateSelector(
-                        date = selectedDate,
-                        onPreviousDay = {
-                            viewModel.selectDate(selectedDate.minusDays(1))
-                        },
-                        onNextDay = {
-                            viewModel.selectDate(selectedDate.plusDays(1))
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    NutritionSummaryHeader(
-                        currentCalories = uiState.currentCalories,
-                        goalCalories = uiState.goalCalories,
-                        currentMacros = uiState.currentMacros,
-                        goalMacros = uiState.goalMacros,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    uiState.meals.forEach { mealSection ->
-                        MealSectionCard(
-                            title = mealSection.title,
-                            items = mealSection.items,
-                            onAddClick = {
-                                navController.currentBackStackEntry?.savedStateHandle?.set(
-                                    "food_items_select_mode", true
-                                )
-                                navController.currentBackStackEntry?.savedStateHandle?.set(
-                                    "food_items_meal_type", mealSection.type.name
-                                )
-                                navController.currentBackStackEntry?.savedStateHandle?.set(
-                                    "food_items_date", selectedDate.toString()
-                                )
-                                navController.navigate(Screen.FoodItems.route)
-                            },
-                            onItemClick = { item ->
-                                navController.currentBackStackEntry?.savedStateHandle?.set(
-                                    "food_items_select_mode", false
-                                )
-                                navController.currentBackStackEntry?.savedStateHandle?.set(
-                                    "food_items_meal_type", mealSection.type.name
-                                )
-                                navController.currentBackStackEntry?.savedStateHandle?.set(
-                                    "food_items_date", selectedDate.toString()
-                                )
-                                navController.navigate(Screen.FoodItems.route)
-                            },
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .background(Background),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Селектор даты
+            DateSelector(
+                date = selectedDate,
+                onPreviousDay = {
+                    viewModel.selectDate(selectedDate.minusDays(1))
+                },
+                onNextDay = {
+                    viewModel.selectDate(selectedDate.plusDays(1))
                 }
+            )
+
+            // Заголовок с калориями и целью
+            NutritionSummaryHeader(
+                currentCalories = uiState.currentCalories,
+                goalCalories = uiState.goalCalories,
+                currentMacros = uiState.currentMacros,
+                goalMacros = uiState.goalMacros
+            )
+
+            // Секции приёмов пищи
+            uiState.meals.forEach { mealSection ->
+                MealSectionCard(
+                    title = mealSection.title,
+                    items = mealSection.items,
+                    onAddClick = {
+                        navController.navigate(Screen.FoodItems.route)
+                    },
+                    onItemClick = { item ->
+                        // TODO: navigate to meal item detail
+                    }
+                )
             }
         }
     }

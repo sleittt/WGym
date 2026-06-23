@@ -42,6 +42,7 @@ android {
 
 dependencies {
     implementation(project(":domain"))
+    implementation(libs.androidx.compose.foundation)
 
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2024.02.00")

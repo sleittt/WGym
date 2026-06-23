@@ -108,4 +108,16 @@ class MealRepositoryImpl @Inject constructor(
     override suspend fun isFoodItemUsed(foodItemId: String): Boolean {
         return foodItemDao.isUsed(foodItemId)
     }
+    override fun observeMealsInPeriod(startDate: LocalDate, endDate: LocalDate): Flow<List<Meal>> {
+        return mealDao.observeWithItemsAndFoodInPeriod(startDate, endDate).map { list ->
+            list.map { mealWithItems ->
+                MealMapper.toDomain(mealWithItems.meal, mealWithItems.items.map { it.mealItem })
+            }
+        }
+    }
+    override suspend fun getMealsInPeriod(startDate: LocalDate, endDate: LocalDate): List<Meal> {
+        return mealDao.getWithItemsAndFoodInPeriod(startDate, endDate).map { mealWithItems ->
+            MealMapper.toDomain(mealWithItems.meal, mealWithItems.items.map { it.mealItem })
+        }
+    }
 }

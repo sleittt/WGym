@@ -15,12 +15,18 @@ sealed class Screen(val route: String) {
     data object ExerciseDetail : Screen("exercise_detail/{exerciseId}") {
         fun createRoute(exerciseId: String) = "exercise_detail/$exerciseId"
     }
-    data object Nutrition : Screen("nutrition")
+    data object Nutrition : Screen("nutrition/{date}") {
+        fun createRoute(date: String = "") = if (date.isNotEmpty()) "nutrition/$date" else "nutrition/"
+    }
     data object FoodItems : Screen("food_items")
     data object AddFoodItem : Screen("add_food_item")
-    data object Statistics : Screen("statistics")
-    data object Settings : Screen("settings")
 
+    // Statistics
+    data object Statistics : Screen("statistics")
+    data object WorkoutHistory : Screen("workout_history")
+    data object NutritionStats : Screen("nutrition_stats")
+
+    data object Settings : Screen("settings")
     data object ExerciseCreate : Screen("exercise_create")
     data object MealItemDetail : Screen("meal_item_detail")
 }

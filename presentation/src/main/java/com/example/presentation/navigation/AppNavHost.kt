@@ -14,6 +14,9 @@ import com.example.presentation.meal.screens.AddFoodItemScreen
 import com.example.presentation.meal.screens.FoodItemsScreen
 import com.example.presentation.meal.screens.MealItemDetailScreen
 import com.example.presentation.meal.screens.NutritionScreen
+import com.example.presentation.statistics.screens.StatisticsScreen
+import com.example.presentation.statistics.screens.WorkoutHistoryScreen
+import com.example.presentation.stats.screen.NutritionStatsScreen
 import com.example.presentation.workout.screens.ActiveWorkoutScreen
 import com.example.presentation.workout.screens.ExerciseCreateScreen
 import com.example.presentation.workout.screens.ExerciseDetailScreen
@@ -89,8 +92,19 @@ fun AppNavHost(
             }
 
             // ===== NUTRITION SCREENS =====
-            composable(Screen.Nutrition.route) {
-                NutritionScreen(navController = navController)
+            composable(
+                route = Screen.Nutrition.route,
+                arguments = listOf(
+                    navArgument("date") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    }
+                )
+            ) { backStackEntry ->
+                NutritionScreen(
+                    navController = navController,
+                    dateString = backStackEntry.arguments?.getString("date")
+                )
             }
 
             composable(Screen.FoodItems.route) {
@@ -100,8 +114,17 @@ fun AppNavHost(
                 AddFoodItemScreen(navController = navController)
             }
 
+            // ===== STATISTICS SCREENS =====
+            composable(Screen.Statistics.route) {
+                StatisticsScreen(navController = navController)
+            }
+            composable(Screen.WorkoutHistory.route) {
+                WorkoutHistoryScreen(navController = navController)
+            }
+            composable(Screen.NutritionStats.route) {
+                NutritionStatsScreen(navController = navController)
+            }
 
-            composable(Screen.Statistics.route) { /* StatisticsScreen(navController) */ }
             composable(Screen.Settings.route) { /* SettingsScreen(navController) */ }
             composable(Screen.MealItemDetail.route) {
                 MealItemDetailScreen(navController = navController)

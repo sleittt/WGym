@@ -31,6 +31,12 @@ interface MealDao {
     @Query("SELECT * FROM meals WHERE date = :date ORDER BY id")
     fun observeWithItemsAndFoodByDate(date: LocalDate): Flow<List<MealWithItemsAndFood>>
 
+    @Transaction
+    @Query("SELECT * FROM meals ORDER BY date DESC")
+    fun observeAllWithItemsAndFood(): Flow<List<MealWithItemsAndFood>>
+    @Transaction
+    @Query("SELECT * FROM meals WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    fun observeWithItemsAndFoodInPeriod(startDate: LocalDate, endDate: LocalDate): Flow<List<MealWithItemsAndFood>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(meal: MealEntity)
 
@@ -45,4 +51,7 @@ interface MealDao {
 
     @Query("SELECT * FROM meals WHERE sync_status != 'SYNCED'")
     suspend fun getUnsynced(): List<MealEntity>
+    @Transaction
+    @Query("SELECT * FROM meals WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    suspend fun getWithItemsAndFoodInPeriod(startDate: LocalDate, endDate: LocalDate): List<MealWithItemsAndFood>
 }
