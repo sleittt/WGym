@@ -21,9 +21,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Singleton
@@ -85,7 +85,8 @@ class WorkoutManager @Inject constructor(
         val isFinished: Boolean = false,
         val workoutId: String? = null,
         val defaultRestTime: Duration = 90.seconds,
-        val activeRestTimer: ActiveRestTimer? = null
+        val activeRestTimer: ActiveRestTimer? = null,
+        val showFinishDialog: Boolean = false
     ) {
         val elapsedTimeFormatted: String
             get() {
@@ -116,7 +117,7 @@ class WorkoutManager @Inject constructor(
     }
 
     fun startWorkout(template: WorkoutTemplate) {
-        if (_workoutState.value.isRunning) return // уже запущена
+        if (_workoutState.value.isRunning) return
 
         startTime = Clock.System.now()
         val defaultRest = template.defaultRestTime
@@ -234,7 +235,7 @@ class WorkoutManager @Inject constructor(
                 exercises = exercises.mapIndexed { i, ex ->
                     if (i == exerciseIndex) ex.copy(sets = sets) else ex
                 },
-                canFinish = exercises.any { ex -> ex.sets.any { it.isCompleted } },
+                canFinish = true,
                 activeRestTimer = null
             )
 
@@ -251,11 +252,13 @@ class WorkoutManager @Inject constructor(
                 )
             )
 
+            val hasAnyCompleted = exercises.any { ex -> ex.sets.any { it.isCompleted } }
+
             _workoutState.value = state.copy(
                 exercises = exercises.mapIndexed { i, ex ->
                     if (i == exerciseIndex) ex.copy(sets = sets) else ex
                 },
-                canFinish = exercises.any { ex -> ex.sets.any { it.isCompleted } },
+                canFinish = hasAnyCompleted,
                 activeRestTimer = null
             )
         }
@@ -453,7 +456,69 @@ class WorkoutManager @Inject constructor(
         }
     }
 
+    // --- Finish Dialog Logic ---
+
+    fun requestFinishWorkout() {
+        val state = _workoutState.value
+        if (!state.isRunning || state.isFinished) return
+
+        // Проверяем, все ли подходы выполнены
+        val allSetsCompleted = state.exercises.all { ex ->
+            ex.sets.all { it.isCompleted }
+        }
+
+        if (allSetsCompleted) {
+            // Все выполнены - сразу завершаем
+            doFinishWorkout()
+        } else {
+            // Не все выполнены - показываем диалог
+            _workoutState.update { it.copy(showFinishDialog = true) }
+        }
+    }
+
+    fun dismissFinishDialog() {
+        _workoutState.update { it.copy(showFinishDialog = false) }
+    }
+
+    fun markAllSetsCompletedAndFinish() {
+        _workoutState.update { state ->
+            val updatedExercises = state.exercises.map { ex ->
+                ex.copy(
+                    sets = ex.sets.map { set ->
+                        set.copy(isCompleted = true)
+                    }
+                )
+            }
+            state.copy(
+                exercises = updatedExercises,
+                canFinish = true,
+                showFinishDialog = false
+            )
+        }
+        doFinishWorkout()
+    }
+
+    fun removeUncompletedSetsAndFinish() {
+        _workoutState.update { state ->
+            val updatedExercises = state.exercises.map { ex ->
+                ex.copy(
+                    sets = ex.sets.filter { it.isCompleted }
+                )
+            }.filter { it.sets.isNotEmpty() } // Удаляем упражнения без подходов
+            state.copy(
+                exercises = updatedExercises,
+                canFinish = updatedExercises.isNotEmpty(),
+                showFinishDialog = false
+            )
+        }
+        doFinishWorkout()
+    }
+
     fun finishWorkout() {
+        requestFinishWorkout()
+    }
+
+    private fun doFinishWorkout() {
         timerJob?.cancel()
         restTimerJob?.cancel()
         endTime = Clock.System.now()
@@ -512,7 +577,8 @@ class WorkoutManager @Inject constructor(
                             isFinished = true,
                             isLoading = false,
                             workoutId = saved.id,
-                            activeRestTimer = null
+                            activeRestTimer = null,
+                            showFinishDialog = false
                         )
                     }
                 }

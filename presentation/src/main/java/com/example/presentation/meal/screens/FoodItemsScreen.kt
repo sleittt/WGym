@@ -63,7 +63,7 @@ fun FoodItemsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
-    // Читаем параметры из savedStateHandle предыдущего экрана
+    // Читаем параметры из savedStateHandle (переданы из NutritionScreen)
     val selectMode = navController.previousBackStackEntry
         ?.savedStateHandle
         ?.get<Boolean>("food_items_select_mode") ?: false
@@ -82,7 +82,16 @@ fun FoodItemsScreen(
                 containerColor = Background
             )
         },
-
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate(Screen.AddFoodItem.route) },
+                containerColor = PrimaryRed,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Добавить продукт")
+            }
+        },
         containerColor = Background
     ) { padding ->
         Column(
@@ -150,19 +159,31 @@ fun FoodItemsScreen(
                                         selectMode = selectMode,
                                         onClick = {
                                             if (selectMode) {
-                                                navController.previousBackStackEntry
-                                                    ?.savedStateHandle
-                                                    ?.set("selected_food_item_id", item.id)
-                                                navController.navigateUp()
+                                                // При нажатии на тело в selectMode → редактирование ПРОДУКТА
+                                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                    "edit_food_item_id", item.id
+                                                )
+                                                navController.navigate(Screen.AddFoodItem.route)
                                             } else {
-                                                // TODO: navigate to food item detail
+                                                // Редактирование продукта (AddFoodItemScreen)
+                                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                    "edit_food_item_id", item.id
+                                                )
+                                                navController.navigate(Screen.AddFoodItem.route)
                                             }
                                         },
                                         onAdd = {
-                                            navController.previousBackStackEntry
-                                                ?.savedStateHandle
-                                                ?.set("selected_food_item_id", item.id)
-                                            navController.navigateUp()
+                                            // При нажатии на + → экран добавления ЗАПИСИ в приём пищи
+                                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                "meal_item_food_id", item.id
+                                            )
+                                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                "meal_item_meal_type", mealType
+                                            )
+                                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                "meal_item_date", date
+                                            )
+                                            navController.navigate(Screen.MealItemDetail.route)
                                         }
                                     )
                                 }
@@ -185,19 +206,28 @@ fun FoodItemsScreen(
                                         selectMode = selectMode,
                                         onClick = {
                                             if (selectMode) {
-                                                navController.previousBackStackEntry
-                                                    ?.savedStateHandle
-                                                    ?.set("selected_food_item_id", item.id)
-                                                navController.navigateUp()
+                                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                    "edit_food_item_id", item.id
+                                                )
+                                                navController.navigate(Screen.AddFoodItem.route)
                                             } else {
-                                                // TODO: navigate to food item detail
+                                                navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                    "edit_food_item_id", item.id
+                                                )
+                                                navController.navigate(Screen.AddFoodItem.route)
                                             }
                                         },
                                         onAdd = {
-                                            navController.previousBackStackEntry
-                                                ?.savedStateHandle
-                                                ?.set("selected_food_item_id", item.id)
-                                            navController.navigateUp()
+                                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                "meal_item_food_id", item.id
+                                            )
+                                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                "meal_item_meal_type", mealType
+                                            )
+                                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                                "meal_item_date", date
+                                            )
+                                            navController.navigate(Screen.MealItemDetail.route)
                                         }
                                     )
                                 }
@@ -295,18 +325,17 @@ fun FoodItemListRow(
                     color = TextSecondary,
                     fontSize = 14.sp
                 )
-                if (selectMode) {
-                    IconButton(
-                        onClick = onAdd,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Добавить",
-                            tint = PrimaryRed,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                // Плюс ВСЕГДА виден (для добавления записи)
+                IconButton(
+                    onClick = onAdd,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Добавить",
+                        tint = PrimaryRed,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

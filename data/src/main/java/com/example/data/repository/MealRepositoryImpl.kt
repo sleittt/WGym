@@ -13,6 +13,7 @@ import com.example.domain.model.meal.Meal
 import com.example.domain.model.meal.MealType
 import com.example.domain.repository.MealRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.util.UUID
@@ -35,14 +36,8 @@ class MealRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addFoodToMeal(date: LocalDate, mealType: MealType, foodItemId: String, amountGrams: Float): Meal {
-        val existingMeal = mealDao.observeByDate(date).map { meals ->
-            meals.firstOrNull { it.type == mealType }
-        }.let { flow ->
-            // Get first emission synchronously for this suspend function
-            var result: MealEntity? = null
-            flow.collect { result = it }
-            result
-        }
+        val meals = mealDao.observeByDate(date).first()
+        val existingMeal = meals.firstOrNull { it.type == mealType }
 
         val meal = if (existingMeal != null) {
             existingMeal

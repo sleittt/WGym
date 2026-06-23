@@ -26,6 +26,7 @@ import com.example.presentation.ui.components.MealSectionCard
 import com.example.presentation.ui.components.NutritionSummaryHeader
 import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.theme.Background
+import com.example.presentation.workout.viewmodels.WorkoutManagerViewModel
 
 @Composable
 fun NutritionScreen(
@@ -42,7 +43,10 @@ fun NutritionScreen(
                 navController = navController
             )
         },
-        bottomBar = { BottomNavigationBar(navController) },
+        bottomBar = {
+            val workoutManagerVm: WorkoutManagerViewModel = hiltViewModel()
+            BottomNavigationBar(navController, workoutManagerVm.workoutManager)
+        },
         containerColor = Background
     ) { paddingValues ->
         when {

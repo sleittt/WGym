@@ -53,6 +53,7 @@ import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.PrimaryRed
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
+import com.example.presentation.workout.viewmodels.WorkoutManagerViewModel
 import com.example.presentation.workout.viewmodels.WorkoutTemplatesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +85,10 @@ fun WorkoutTemplatesScreen(
                 Icon(Icons.Default.Add, contentDescription = "Добавить")
             }
         },
-        bottomBar = { BottomNavigationBar(navController) },
+        bottomBar = {
+            val workoutManagerVm: WorkoutManagerViewModel = hiltViewModel()
+            BottomNavigationBar(navController, workoutManagerVm.workoutManager)
+        },
         containerColor = Background
     ) { padding ->
         if (uiState.isLoading && uiState.templates.isEmpty()) {

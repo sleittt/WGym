@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.presentation.meal.viewmodels.AddFoodItemViewModel
 import com.example.presentation.ui.components.Button
+import com.example.presentation.ui.components.DangerButton
 import com.example.presentation.ui.components.TextField
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.TextPrimary
@@ -39,6 +40,15 @@ fun AddFoodItemScreen(
     viewModel: AddFoodItemViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Проверяем, есть ли id для редактирования
+    val editFoodItemId = navController.previousBackStackEntry
+        ?.savedStateHandle
+        ?.get<String>("edit_food_item_id")
+
+    androidx.compose.runtime.LaunchedEffect(editFoodItemId) {
+        editFoodItemId?.let { viewModel.loadForEdit(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -111,9 +121,20 @@ fun AddFoodItemScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Кнопка
+            // Кнопка удалить (только при редактировании)
+            if (uiState.isEditing) {
+                DangerButton(
+                    text = "Удалить запись",
+                    onClick = {
+                        viewModel.onDelete { navController.navigateUp() }
+                    },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
+            // Кнопка добавить/сохранить
             Button(
-                text = "Добавить продукт",
+                text = if (uiState.isEditing) "Сохранить" else "Добавить продукт",
                 onClick = {
                     viewModel.onAddClick(
                         onSuccess = { navController.navigateUp() },

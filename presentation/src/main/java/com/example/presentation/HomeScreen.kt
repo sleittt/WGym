@@ -93,7 +93,7 @@ fun HomeScreen(
                 )
             )
         },
-        bottomBar = { BottomNavigationBar(navController) },
+        bottomBar = { BottomNavigationBar(navController, workoutManager) },
         containerColor = Background
     ) { padding ->
         Column(

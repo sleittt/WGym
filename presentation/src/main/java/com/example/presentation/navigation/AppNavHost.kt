@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.example.presentation.HomeScreen
 import com.example.presentation.meal.screens.AddFoodItemScreen
 import com.example.presentation.meal.screens.FoodItemsScreen
+import com.example.presentation.meal.screens.MealItemDetailScreen
 import com.example.presentation.meal.screens.NutritionScreen
 import com.example.presentation.workout.screens.ActiveWorkoutScreen
 import com.example.presentation.workout.screens.ExerciseCreateScreen
@@ -102,6 +103,9 @@ fun AppNavHost(
 
             composable(Screen.Statistics.route) { /* StatisticsScreen(navController) */ }
             composable(Screen.Settings.route) { /* SettingsScreen(navController) */ }
+            composable(Screen.MealItemDetail.route) {
+                MealItemDetailScreen(navController = navController)
+            }
         }
     }
 }

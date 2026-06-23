@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.meal.FoodItem
 import com.example.domain.usecase.meal.AddFoodItemsUseCase
+import com.example.domain.usecase.meal.DeleteFoodItemUseCase
+import com.example.domain.usecase.meal.GetFoodItemByIdUseCase
+import com.example.domain.usecase.meal.UpdateFoodItemUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +18,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AddFoodItemViewModel @Inject constructor(
-    private val addFoodItemsUseCase: AddFoodItemsUseCase
+    private val addFoodItemsUseCase: AddFoodItemsUseCase,
+    private val getFoodItemByIdUseCase: GetFoodItemByIdUseCase,
+    private val updateFoodItemUseCase: UpdateFoodItemUseCase,
+    private val deleteFoodItemUseCase: DeleteFoodItemUseCase
 ) : ViewModel() {
 
     data class UiState(
@@ -24,6 +30,8 @@ class AddFoodItemViewModel @Inject constructor(
         val protein: String = "",
         val fat: String = "",
         val carbs: String = "",
+        val editingId: String? = null,
+        val isEditing: Boolean = false,
         val isLoading: Boolean = false,
         val error: String? = null
     ) {
@@ -37,6 +45,29 @@ class AddFoodItemViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    fun loadForEdit(foodItemId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val foodItem = getFoodItemByIdUseCase(foodItemId)
+            if (foodItem != null) {
+                _uiState.update {
+                    it.copy(
+                        name = foodItem.name,
+                        calories = foodItem.caloriesPer100g.toString(),
+                        protein = foodItem.proteinPer100g.toString(),
+                        fat = foodItem.fatsPer100g.toString(),
+                        carbs = foodItem.carbsPer100g.toString(),
+                        editingId = foodItemId,
+                        isEditing = true,
+                        isLoading = false
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(isLoading = false, error = "Продукт не найден") }
+            }
+        }
+    }
 
     fun onNameChange(value: String) {
         _uiState.update { it.copy(name = value) }
@@ -66,7 +97,7 @@ class AddFoodItemViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             val foodItem = FoodItem(
-                id = UUID.randomUUID().toString(),
+                id = state.editingId ?: UUID.randomUUID().toString(),
                 name = state.name.trim(),
                 caloriesPer100g = state.calories.toDouble(),
                 proteinPer100g = state.protein.toDouble(),
@@ -74,14 +105,43 @@ class AddFoodItemViewModel @Inject constructor(
                 carbsPer100g = state.carbs.toDouble()
             )
 
-            addFoodItemsUseCase(foodItem)
+            if (state.isEditing && state.editingId != null) {
+                updateFoodItemUseCase(state.editingId, foodItem)
+                    .onSuccess {
+                        _uiState.update { UiState() }
+                        onSuccess()
+                    }
+                    .onFailure { e ->
+                        _uiState.update { it.copy(isLoading = false, error = e.message) }
+                        onError(e.message ?: "Ошибка")
+                    }
+            } else {
+                addFoodItemsUseCase(foodItem)
+                    .onSuccess {
+                        _uiState.update { UiState() }
+                        onSuccess()
+                    }
+                    .onFailure { e ->
+                        _uiState.update { it.copy(isLoading = false, error = e.message) }
+                        onError(e.message ?: "Ошибка")
+                    }
+            }
+        }
+    }
+
+    fun onDelete(onSuccess: () -> Unit) {
+        val state = uiState.value
+        val id = state.editingId ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            deleteFoodItemUseCase(id)
                 .onSuccess {
-                    _uiState.update { UiState() } // reset
+                    _uiState.update { UiState() }
                     onSuccess()
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
-                    onError(e.message ?: "Ошибка")
                 }
         }
     }

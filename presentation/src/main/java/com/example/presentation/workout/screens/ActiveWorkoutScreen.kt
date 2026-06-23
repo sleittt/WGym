@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -94,6 +96,15 @@ fun ActiveWorkoutScreen(
 
     val showFloatingTimer = activeTimer != null && activeTimer.isRunning && !isActiveTimerVisible
 
+    // Диалог завершения тренировки
+    if (uiState.showFinishDialog) {
+        FinishWorkoutDialog(
+            onMarkAllCompleted = { viewModel.markAllSetsCompletedAndFinish() },
+            onRemoveUncompleted = { viewModel.removeUncompletedSetsAndFinish() },
+            onDismiss = { viewModel.dismissFinishDialog() }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -136,12 +147,12 @@ fun ActiveWorkoutScreen(
                 actions = {
                     IconButton(
                         onClick = { viewModel.finishWorkout() },
-                        enabled = uiState.canFinish && !uiState.isFinished
+                        enabled = !uiState.isFinished
                     ) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = "Завершить",
-                            tint = if (uiState.canFinish && !uiState.isFinished) PrimaryGreen else TextSecondary,
+                            tint = if (!uiState.isFinished) PrimaryGreen else TextSecondary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -241,6 +252,61 @@ fun ActiveWorkoutScreen(
             }
         }
     }
+}
+
+@Composable
+fun FinishWorkoutDialog(
+    onMarkAllCompleted: () -> Unit,
+    onRemoveUncompleted: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Завершить тренировку?",
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                "Не все подходы выполнены. Что сделать с неотмеченными подходами?",
+                color = TextSecondary,
+                fontSize = 14.sp
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onMarkAllCompleted) {
+                Text(
+                    "Отметить все",
+                    color = PrimaryGreen,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        dismissButton = {
+            Column {
+                TextButton(onClick = onRemoveUncompleted) {
+                    Text(
+                        "Удалить неотмеченные",
+                        color = PrimaryRed,
+                        fontSize = 14.sp
+                    )
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        "Отмена",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        },
+        containerColor = Surface
+    )
 }
 
 @Composable

@@ -1,5 +1,6 @@
 package com.example.presentation.meal.viewmodels
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.meal.Meal
@@ -24,6 +25,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NutritionViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
     private val getMealsByDateUseCase: GetMealsByDateUseCase,
     private val getFoodItemByIdUseCase: GetFoodItemByIdUseCase
 ) : ViewModel() {
@@ -49,7 +51,15 @@ class NutritionViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    companion object {
+        private const val KEY_SELECTED_DATE = "nutrition_selected_date"
+    }
+
+    private val _selectedDate = MutableStateFlow(
+        savedStateHandle.get<String>(KEY_SELECTED_DATE)?.let {
+            try { LocalDate.parse(it) } catch(e: Exception) { null }
+        } ?: LocalDate.now()
+    )
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
     init {
@@ -74,6 +84,7 @@ class NutritionViewModel @Inject constructor(
 
     fun selectDate(date: LocalDate) {
         _selectedDate.value = date
+        savedStateHandle[KEY_SELECTED_DATE] = date.toString()
         loadData()
     }
 

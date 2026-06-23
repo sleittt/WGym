@@ -28,7 +28,7 @@ class ActiveWorkoutViewModel @Inject constructor(
         )
 
     fun loadTemplate(templateId: String) {
-        if (workoutManager.hasActiveWorkout()) return // уже есть активная тренировка
+        if (workoutManager.hasActiveWorkout()) return
 
         if (templateId.isBlank() || templateId == "0") {
             workoutManager.startFreeWorkout()
@@ -73,5 +73,17 @@ class ActiveWorkoutViewModel @Inject constructor(
 
     fun finishWorkout() {
         workoutManager.finishWorkout()
+    }
+
+    fun dismissFinishDialog() {
+        workoutManager.dismissFinishDialog()
+    }
+
+    fun markAllSetsCompletedAndFinish() {
+        workoutManager.markAllSetsCompletedAndFinish()
+    }
+
+    fun removeUncompletedSetsAndFinish() {
+        workoutManager.removeUncompletedSetsAndFinish()
     }
 }

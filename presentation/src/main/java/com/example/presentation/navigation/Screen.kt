@@ -15,15 +15,12 @@ sealed class Screen(val route: String) {
     data object ExerciseDetail : Screen("exercise_detail/{exerciseId}") {
         fun createRoute(exerciseId: String) = "exercise_detail/$exerciseId"
     }
-    data object AddExerciseToWorkout : Screen("add_exercise_to_workout")
     data object Nutrition : Screen("nutrition")
     data object FoodItems : Screen("food_items")
     data object AddFoodItem : Screen("add_food_item")
-    data object AddFoodToMeal : Screen("add_food_to_meal")
-    data object WorkoutHistory : Screen("workout_history")
     data object Statistics : Screen("statistics")
     data object Settings : Screen("settings")
-    data object ExerciseSelect : Screen("exercise_select")
 
     data object ExerciseCreate : Screen("exercise_create")
+    data object MealItemDetail : Screen("meal_item_detail")
 }
