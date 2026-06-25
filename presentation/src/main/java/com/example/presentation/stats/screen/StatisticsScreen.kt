@@ -1,4 +1,4 @@
-package com.example.presentation.statistics.screens
+package com.example.presentation.stats.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,7 +83,8 @@ fun StatisticsScreen(
                         label = "Эта неделя",
                         value = "${uiState.workoutStats.weekCount} тренировки",
                         detail = "тоннаж - ${uiState.workoutStats.weekTonnage} кг",
-                        onClick = { navController.navigate(Screen.WorkoutHistory.route) }
+                        onClick = { navController.navigate(Screen.WorkoutHistory.route) },
+                        showChart = false
                     )
 
                     HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -92,7 +93,8 @@ fun StatisticsScreen(
                         label = "Этот месяц",
                         value = "${uiState.workoutStats.monthCount} тренировок",
                         detail = "тоннаж - ${uiState.workoutStats.monthTonnage} кг",
-                        onClick = { navController.navigate(Screen.WorkoutHistory.route) }
+                        onClick = { navController.navigate(Screen.WorkoutHistory.route) },
+                        showChart = false
                     )
                 }
 
@@ -107,7 +109,8 @@ fun StatisticsScreen(
                         label = "Сегодня",
                         value = "${uiState.nutritionStats.todayCalories} ккал",
                         detail = todayMacros,
-                        onClick = { navController.navigate(Screen.NutritionStats.route) }
+                        onClick = { navController.navigate(Screen.NutritionStats.route) },
+                        showChart = false
                     )
 
                     HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -117,7 +120,8 @@ fun StatisticsScreen(
                         label = "Эта неделя",
                         value = "${uiState.nutritionStats.weekCalories} ккал",
                         detail = weekMacros,
-                        onClick = { navController.navigate(Screen.NutritionStats.route) }
+                        onClick = { navController.navigate(Screen.NutritionStats.route) },
+                        showChart = false
                     )
                 }
 
@@ -138,42 +142,51 @@ fun StatisticsScreen(
                         onClick = { },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Вес
-                        StatRowItem(
-                            label = "Вес",
-                            value = "Сейчас: ${uiState.bodyStats.currentWeight}кг",
-                            extraInfo = "Наибольший: ${uiState.bodyStats.maxWeight}кг\nНаименьший: ${uiState.bodyStats.minWeight}кг",
-                            onClick = { /* TODO: body measurements screen */ }
+                        val typeLabels = mapOf(
+                            "weight" to "Вес",
+                            "arm" to "Обхват руки",
+                            "waist" to "Обхват талии",
+                            "chest" to "Обхват груди",
+                            "leg" to "Обхват бедра",
+                            "shoulder" to "Обхват плеча"
+                        )
+                        val typeUnits = mapOf(
+                            "weight" to "кг",
+                            "arm" to "см",
+                            "waist" to "см",
+                            "chest" to "см",
+                            "leg" to "см",
+                            "shoulder" to "см"
                         )
 
-                        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
-
-                        // Обхват руки
-                        StatRowItem(
-                            label = "Обхват руки",
-                            value = "Сейчас: ${uiState.bodyStats.currentArm}см",
-                            extraInfo = "Наибольший: ${uiState.bodyStats.maxArm}см\nНаименьший: ${uiState.bodyStats.minArm}см",
-                            onClick = { /* TODO: body measurements screen */ }
-                        )
-
-                        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
-
-                        // Placeholder rows
-                        StatRowItem(
-                            label = "Текст",
-                            value = "Текст",
-                            extraInfo = "Текст",
-                            onClick = { }
-                        )
-
-                        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+                        // Вес всегда показываем, даже если нет записей
+                        val weightSummary = uiState.measurements["weight"] ?: StatisticsViewModel.MeasurementSummary()
+                        val weightLabel = typeLabels["weight"] ?: "Вес"
+                        val weightUnit = typeUnits["weight"] ?: "кг"
 
                         StatRowItem(
-                            label = "Текст",
-                            value = "Текст",
-                            extraInfo = "Текст\nТекст",
-                            onClick = { }
+                            label = weightLabel,
+                            value = "Сейчас: ${weightSummary.current}${weightUnit}",
+                            extraInfo = "Наибольший: ${weightSummary.max}${weightUnit}\nНаименьший: ${weightSummary.min}${weightUnit}",
+                            onClick = { navController.navigate(Screen.BodyMeasurements.createRoute("weight")) },
+                            showChart = true
                         )
+
+                        // Остальные типы (только если есть записи)
+                        uiState.measurements.filter { it.key != "weight" }.entries.forEach { (type, summary) ->
+                            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+
+                            val label = typeLabels[type] ?: type
+                            val unit = typeUnits[type] ?: ""
+
+                            StatRowItem(
+                                label = label,
+                                value = "Сейчас: ${summary.current}${unit}",
+                                extraInfo = "Наибольший: ${summary.max}${unit}\nНаименьший: ${summary.min}${unit}",
+                                onClick = { navController.navigate(Screen.BodyMeasurements.createRoute(type)) },
+                                showChart = true
+                            )
+                        }
                     }
                 }
 
@@ -222,11 +235,13 @@ private fun StatRowItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     detail: String? = null,
-    extraInfo: String? = null
+    extraInfo: String? = null,
+    showChart: Boolean = false
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -270,13 +285,14 @@ private fun StatRowItem(
             }
         }
 
-        // Мини-график placeholder
-        Box(
-            modifier = Modifier
-                .width(70.dp)
-                .height(50.dp)
-        ) {
-            MiniChartPlaceholder(title = "Мини-график")
+        if (showChart) {
+            Box(
+                modifier = Modifier
+                    .width(70.dp)
+                    .height(50.dp)
+            ) {
+                MiniChartPlaceholder(title = "Мини-график")
+            }
         }
     }
 }

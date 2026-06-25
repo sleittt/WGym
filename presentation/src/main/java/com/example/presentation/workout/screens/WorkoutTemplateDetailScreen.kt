@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.domain.model.workout.SetType
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.Button
 import com.example.presentation.ui.components.Card
@@ -61,6 +63,10 @@ import com.example.presentation.ui.theme.SurfaceVariant
 import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
 import com.example.presentation.workout.viewmodels.WorkoutTemplateDetailViewModel
+
+// ─── Цвета типов подходов ───
+private val WarmupColor = PrimaryGreen
+private val FailureColor = PrimaryRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,6 +211,9 @@ fun WorkoutTemplateDetailScreen(
                             },
                             onUpdateSetRestTime = { setIdx, restSeconds ->
                                 viewModel.updateSetRestTime(index, setIdx, restSeconds)
+                            },
+                            onChangeSetType = { setIdx, type ->
+                                viewModel.changeSetType(index, setIdx, type)
                             }
                         )
                     }
@@ -324,7 +333,8 @@ fun ExerciseEditorCard(
     onAddSet: () -> Unit,
     onRemoveSet: (Int) -> Unit,
     onUpdateSet: (Int, Float, Int) -> Unit,
-    onUpdateSetRestTime: (Int, Int) -> Unit
+    onUpdateSetRestTime: (Int, Int) -> Unit,
+    onChangeSetType: (Int, SetType) -> Unit
 ) {
     Card {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -356,7 +366,7 @@ fun ExerciseEditorCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Подход", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(40.dp))
+                Text("Тип", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(40.dp))
                 Text("Пред.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Вес", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Повт.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(50.dp))
@@ -367,6 +377,7 @@ fun ExerciseEditorCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             exercise.sets.forEachIndexed { setIndex, set ->
+                var showTypeMenu by remember { mutableStateOf(false) }
                 var showRestPicker by remember { mutableStateOf(false) }
 
                 Row(
@@ -376,16 +387,37 @@ fun ExerciseEditorCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        when (set.type) {
-                            com.example.domain.model.workout.SetType.WARMUP -> "W"
-                            com.example.domain.model.workout.SetType.FAILURE -> "F"
-                            else -> (setIndex + 1).toString()
-                        },
-                        color = TextSecondary,
-                        fontSize = 14.sp,
-                        modifier = Modifier.width(40.dp)
-                    )
+                    // Кликабельный тип подхода
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                when (set.type) {
+                                    SetType.WARMUP -> WarmupColor.copy(alpha = 0.2f)
+                                    SetType.FAILURE -> FailureColor.copy(alpha = 0.2f)
+                                    else -> Color.Transparent
+                                }
+                            )
+                            .clickable { showTypeMenu = true }
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            when (set.type) {
+                                SetType.WARMUP -> "W"
+                                SetType.FAILURE -> "F"
+                                else -> (setIndex + 1).toString()
+                            },
+                            color = when (set.type) {
+                                SetType.WARMUP -> WarmupColor
+                                SetType.FAILURE -> FailureColor
+                                else -> TextSecondary
+                            },
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
                     Text(
                         "${set.load.toInt()} кг x ${set.reps}",
@@ -445,6 +477,48 @@ fun ExerciseEditorCard(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                }
+
+                // Диалог выбора типа подхода
+                if (showTypeMenu) {
+                    AlertDialog(
+                        onDismissRequest = { showTypeMenu = false },
+                        title = { Text("Тип подхода", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                        text = {
+                            Column {
+                                SetType.entries.forEach { type ->
+                                    TextButton(
+                                        onClick = {
+                                            onChangeSetType(setIndex, type)
+                                            showTypeMenu = false
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            when (type) {
+                                                SetType.WARMUP -> "Разминка (W)"
+                                                SetType.FAILURE -> "Отказ (F)"
+                                                SetType.NORMAL -> "Обычный"
+                                            },
+                                            color = when (type) {
+                                                SetType.WARMUP -> WarmupColor
+                                                SetType.FAILURE -> FailureColor
+                                                else -> TextPrimary
+                                            },
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showTypeMenu = false }) {
+                                Text("Отмена", color = TextSecondary)
+                            }
+                        },
+                        containerColor = Surface
+                    )
                 }
 
                 if (showRestPicker) {

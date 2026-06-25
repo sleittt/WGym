@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -35,15 +36,17 @@ fun NutritionScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
 
-    // Устанавливаем дату из параметра, если передана
-    if (dateString != null && dateString.isNotBlank()) {
-        try {
-            val parsedDate = LocalDate.parse(dateString)
-            if (parsedDate != selectedDate) {
-                viewModel.selectDate(parsedDate)
+    // Устанавливаем дату из параметра ТОЛЬКО при изменении dateString
+    LaunchedEffect(dateString) {
+        if (!dateString.isNullOrBlank()) {
+            try {
+                val parsedDate = LocalDate.parse(dateString)
+                if (parsedDate != selectedDate) {
+                    viewModel.selectDate(parsedDate)
+                }
+            } catch (e: Exception) {
+                // ignore invalid date
             }
-        } catch (e: Exception) {
-            // ignore invalid date
         }
     }
 
@@ -94,6 +97,13 @@ fun NutritionScreen(
                     title = mealSection.title,
                     items = mealSection.items,
                     onAddClick = {
+                        // Передаём текущую выбранную дату в FoodItemsScreen
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            "food_items_date", selectedDate.toString()
+                        )
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            "food_items_meal_type", mealSection.type.name
+                        )
                         navController.navigate(Screen.FoodItems.route)
                     },
                     onItemClick = { item ->

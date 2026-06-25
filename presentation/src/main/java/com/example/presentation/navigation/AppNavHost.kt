@@ -14,9 +14,11 @@ import com.example.presentation.meal.screens.AddFoodItemScreen
 import com.example.presentation.meal.screens.FoodItemsScreen
 import com.example.presentation.meal.screens.MealItemDetailScreen
 import com.example.presentation.meal.screens.NutritionScreen
-import com.example.presentation.statistics.screens.StatisticsScreen
-import com.example.presentation.statistics.screens.WorkoutHistoryScreen
+import com.example.presentation.stats.screen.StatisticsScreen
+import com.example.presentation.stats.screen.BodyMeasurementsScreen
 import com.example.presentation.stats.screen.NutritionStatsScreen
+import com.example.presentation.stats.screen.WorkoutHistoryScreen
+import com.example.presentation.stats.screen.WorkoutTemplateHistoryScreen
 import com.example.presentation.workout.screens.ActiveWorkoutScreen
 import com.example.presentation.workout.screens.ExerciseCreateScreen
 import com.example.presentation.workout.screens.ExerciseDetailScreen
@@ -54,11 +56,8 @@ fun AppNavHost(
             composable(
                 route = Screen.ActiveWorkout.route,
                 arguments = listOf(navArgument("templateId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                ActiveWorkoutScreen(
-                    navController = navController,
-                    templateId = backStackEntry.arguments?.getString("templateId") ?: "0"
-                )
+            ) {
+                ActiveWorkoutScreen(navController = navController)
             }
 
             composable(
@@ -121,8 +120,26 @@ fun AppNavHost(
             composable(Screen.WorkoutHistory.route) {
                 WorkoutHistoryScreen(navController = navController)
             }
+            composable(
+                route = Screen.WorkoutTemplateHistory.route,
+                arguments = listOf(navArgument("templateId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                WorkoutTemplateHistoryScreen(
+                    navController = navController,
+                    templateId = backStackEntry.arguments?.getString("templateId") ?: "0"
+                )
+            }
             composable(Screen.NutritionStats.route) {
                 NutritionStatsScreen(navController = navController)
+            }
+            composable(
+                route = Screen.BodyMeasurements.route,
+                arguments = listOf(navArgument("type") { type = NavType.StringType })
+            ) { backStackEntry ->
+                BodyMeasurementsScreen(
+                    navController = navController,
+                    measurementType = backStackEntry.arguments?.getString("type") ?: "weight"
+                )
             }
 
             composable(Screen.Settings.route) { /* SettingsScreen(navController) */ }

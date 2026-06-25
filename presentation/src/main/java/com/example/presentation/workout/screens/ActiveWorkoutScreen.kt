@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.domain.manager.WorkoutManager
+import com.example.domain.model.workout.SetType
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.EmptyListState
 import com.example.presentation.ui.components.TextField
@@ -66,19 +67,18 @@ import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
 import com.example.presentation.workout.viewmodels.ActiveWorkoutViewModel
 
+// ─── Цвета типов подходов ───
+private val WarmupColor = PrimaryGreen
+private val FailureColor = PrimaryRed
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
     navController: NavController,
-    templateId: String = "",
     viewModel: ActiveWorkoutViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
-
-    LaunchedEffect(templateId) {
-        viewModel.loadTemplate(templateId)
-    }
 
     val activeTimer = uiState.activeRestTimer
     val isActiveTimerVisible by remember(activeTimer, listState) {
@@ -96,7 +96,6 @@ fun ActiveWorkoutScreen(
 
     val showFloatingTimer = activeTimer != null && activeTimer.isRunning && !isActiveTimerVisible
 
-    // Диалог завершения тренировки
     if (uiState.showFinishDialog) {
         FinishWorkoutDialog(
             onMarkAllCompleted = { viewModel.markAllSetsCompletedAndFinish() },
@@ -193,17 +192,7 @@ fun ActiveWorkoutScreen(
                 val exerciseWithSets = uiState.exercises[index]
                 ExerciseCardWithSets(
                     exerciseName = exerciseWithSets.exercise.template.name,
-                    sets = exerciseWithSets.sets.map { set ->
-                        SetData(
-                            setNumber = set.setNumber,
-                            previous = set.previous,
-                            weight = set.weight,
-                            reps = set.reps,
-                            isCompleted = set.isCompleted,
-                            restProgress = set.restProgress,
-                            restDurationSeconds = set.restDuration.inWholeSeconds.toInt()
-                        )
-                    },
+                    sets = exerciseWithSets.sets,
                     onSetClick = { setIndex ->
                         viewModel.toggleSetCompletion(index, setIndex)
                     },
@@ -218,7 +207,13 @@ fun ActiveWorkoutScreen(
                     },
                     onAdjustRestTime = { setIndex, delta ->
                         viewModel.adjustRestTime(index, setIndex, delta)
-                    }
+                    },
+                    onChangeSetType = { setIndex, type ->
+                        viewModel.changeSetType(index, setIndex, type)
+                    },
+                    onAddSet = { viewModel.addSet(index) },
+                    onRemoveSet = { setIndex -> viewModel.removeSet(index, setIndex) },
+                    onStartRestTimer = { setIndex -> viewModel.startRestTimer(index, setIndex) }
                 )
             }
 
@@ -339,25 +334,19 @@ fun FloatingRestTimer(
     }
 }
 
-data class SetData(
-    val setNumber: String,
-    val previous: String,
-    val weight: String,
-    val reps: String,
-    val isCompleted: Boolean = false,
-    val restProgress: WorkoutManager.RestProgress = WorkoutManager.RestProgress(),
-    val restDurationSeconds: Int = 90
-)
-
 @Composable
 fun ExerciseCardWithSets(
     exerciseName: String,
-    sets: List<SetData>,
+    sets: List<WorkoutManager.SetData>,
     onSetClick: (Int) -> Unit,
     onWeightChange: (Int, String) -> Unit,
     onRepsChange: (Int, String) -> Unit,
     onSkipRest: (Int) -> Unit,
-    onAdjustRestTime: (Int, Int) -> Unit
+    onAdjustRestTime: (Int, Int) -> Unit,
+    onChangeSetType: (Int, SetType) -> Unit,
+    onAddSet: () -> Unit,
+    onRemoveSet: (Int) -> Unit,
+    onStartRestTimer: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -370,22 +359,31 @@ fun ExerciseCardWithSets(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                exerciseName,
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    exerciseName,
+                    color = TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Подход", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(40.dp))
+                Text("Тип", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(40.dp))
                 Text("Пред.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Вес", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text("Повт.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(50.dp))
+                Text("", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(24.dp))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -399,8 +397,22 @@ fun ExerciseCardWithSets(
                     onRepsChange = { onRepsChange(index, it) },
                     onSkipRest = { onSkipRest(index) },
                     onAdjustRestTime = { delta -> onAdjustRestTime(index, delta) },
+                    onChangeSetType = { onChangeSetType(index, it) },
+                    onRemoveSet = { onRemoveSet(index) },
+                    onStartRestTimer = { onStartRestTimer(index) },
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextButton(onClick = onAddSet) {
+                    Text("+ Подход", color = PrimaryRed, fontSize = 14.sp)
+                }
             }
         }
     }
@@ -408,20 +420,25 @@ fun ExerciseCardWithSets(
 
 @Composable
 fun SetRow(
-    setData: SetData,
+    setData: WorkoutManager.SetData,
     setIndex: Int,
     onClick: () -> Unit,
     onWeightChange: (String) -> Unit,
     onRepsChange: (String) -> Unit,
     onSkipRest: () -> Unit,
     onAdjustRestTime: (Int) -> Unit,
+    onChangeSetType: (SetType) -> Unit,
+    onRemoveSet: () -> Unit,
+    onStartRestTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when {
         setData.isCompleted -> PrimaryGreen.copy(alpha = 0.2f)
-        setData.setNumber == "W" -> SurfaceVariant
+        setData.type == SetType.WARMUP -> SurfaceVariant.copy(alpha = 0.7f)
         else -> SurfaceVariant.copy(alpha = 0.5f)
     }
+
+    var showTypeMenu by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
@@ -437,13 +454,33 @@ fun SetRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    setData.setNumber,
-                    color = if (setData.isCompleted) PrimaryGreen else TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.width(40.dp)
-                )
+                // Тип подхода (кликабельный)
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            when (setData.type) {
+                                SetType.WARMUP -> WarmupColor.copy(alpha = 0.2f)
+                                SetType.FAILURE -> FailureColor.copy(alpha = 0.2f)
+                                else -> Color.Transparent
+                            }
+                        )
+                        .clickable { showTypeMenu = true }
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        setData.setNumber,
+                        color = when (setData.type) {
+                            SetType.WARMUP -> WarmupColor
+                            SetType.FAILURE -> FailureColor
+                            else -> if (setData.isCompleted) PrimaryGreen else TextPrimary
+                        },
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Text(
                     setData.previous,
@@ -477,14 +514,67 @@ fun SetRow(
                         modifier = Modifier.height(40.dp)
                     )
                 }
+
+                // Удалить подход
+                IconButton(
+                    onClick = onRemoveSet,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Удалить подход",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
 
+        // Меню выбора типа подхода
+        if (showTypeMenu) {
+            AlertDialog(
+                onDismissRequest = { showTypeMenu = false },
+                title = { Text("Тип подхода", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        SetType.entries.forEach { type ->
+                            TextButton(
+                                onClick = {
+                                    onChangeSetType(type)
+                                    showTypeMenu = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    type.displayName,
+                                    color = when (type) {
+                                        SetType.WARMUP -> WarmupColor
+                                        SetType.FAILURE -> FailureColor
+                                        else -> TextPrimary
+                                    },
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showTypeMenu = false }) {
+                        Text("Отмена", color = TextSecondary)
+                    }
+                },
+                containerColor = Surface
+            )
+        }
+
+        // Таймер отдыха
         RestTimerBar(
             progress = setData.restProgress,
             isCompleted = setData.isCompleted,
             onSkip = onSkipRest,
             onAdjustTime = onAdjustRestTime,
+            onStartTimer = onStartRestTimer,
             modifier = Modifier.padding(top = 4.dp)
         )
     }
@@ -496,6 +586,7 @@ fun RestTimerBar(
     isCompleted: Boolean,
     onSkip: () -> Unit,
     onAdjustTime: (Int) -> Unit,
+    onStartTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isRunning = progress.isRunning
@@ -531,13 +622,19 @@ fun RestTimerBar(
                 RestTimeButton(text = "−−", onClick = { onAdjustTime(-30) })
             }
 
-            Text(
-                if (isRunning) "Отдых: ${progress.formattedTime}"
-                else "Отдых: ${progress.formattedConfiguredTime}",
-                color = if (isRunning) PrimaryGreen else TextSecondary,
-                fontSize = 13.sp,
-                fontWeight = if (isRunning) FontWeight.Medium else FontWeight.Normal
-            )
+            // Клик по таймеру запускает отдых вручную
+            Box(
+                modifier = Modifier.clickable { onStartTimer() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (isRunning) "Отдых: ${progress.formattedTime}"
+                    else "Отдых: ${progress.formattedConfiguredTime} (нажми)",
+                    color = if (isRunning) PrimaryGreen else TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = if (isRunning) FontWeight.Medium else FontWeight.Normal
+                )
+            }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RestTimeButton(text = "+", onClick = { onAdjustTime(15) })

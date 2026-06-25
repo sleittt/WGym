@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
@@ -153,6 +152,17 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
             val exercises = state.exercises.toMutableList()
             val exercise = exercises[exerciseIndex]
             val sets = exercise.sets.toMutableList().apply { removeAt(setIndex) }
+            exercises[exerciseIndex] = exercise.copy(sets = sets)
+            state.copy(exercises = exercises)
+        }
+    }
+
+    fun changeSetType(exerciseIndex: Int, setIndex: Int, type: SetType) {
+        _uiState.update { state ->
+            val exercises = state.exercises.toMutableList()
+            val exercise = exercises[exerciseIndex]
+            val sets = exercise.sets.toMutableList()
+            sets[setIndex] = sets[setIndex].copy(type = type)
             exercises[exerciseIndex] = exercise.copy(sets = sets)
             state.copy(exercises = exercises)
         }

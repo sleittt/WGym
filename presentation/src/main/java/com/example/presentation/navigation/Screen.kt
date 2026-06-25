@@ -25,6 +25,12 @@ sealed class Screen(val route: String) {
     data object Statistics : Screen("statistics")
     data object WorkoutHistory : Screen("workout_history")
     data object NutritionStats : Screen("nutrition_stats")
+    data object WorkoutTemplateHistory : Screen("workout_template_history/{templateId}") {
+        fun createRoute(templateId: String) = "workout_template_history/$templateId"
+    }
+    data object BodyMeasurements : Screen("body_measurements/{type}") {
+        fun createRoute(type: String) = "body_measurements/$type"
+    }
 
     data object Settings : Screen("settings")
     data object ExerciseCreate : Screen("exercise_create")

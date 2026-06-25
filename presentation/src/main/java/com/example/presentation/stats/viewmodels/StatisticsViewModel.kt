@@ -8,6 +8,7 @@ import com.example.domain.usecase.meal.GetFoodItemByIdUseCase
 import com.example.domain.usecase.meal.GetMealsByDateUseCase
 import com.example.domain.usecase.meal.GetMealsInPeriodUseCase
 import com.example.domain.usecase.workout.GetWorkoutsInPeriodUseCase
+import com.example.presentation.stats.viewmodels.BodyMeasurementsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,19 +46,16 @@ class StatisticsViewModel @Inject constructor(
         val weekCarbs: Double = 0.0
     )
 
-    data class BodyStats(
-        val currentWeight: String = "67",
-        val maxWeight: String = "99",
-        val minWeight: String = "60.5",
-        val currentArm: String = "30",
-        val maxArm: String = "45",
-        val minArm: String = "25"
+    data class MeasurementSummary(
+        val current: String = "--",
+        val max: String = "--",
+        val min: String = "--"
     )
 
     data class UiState(
         val workoutStats: WorkoutStats = WorkoutStats(),
         val nutritionStats: NutritionStats = NutritionStats(),
-        val bodyStats: BodyStats = BodyStats(),
+        val measurements: Map<String, MeasurementSummary> = emptyMap(),
         val isLoading: Boolean = false,
         val error: String? = null
     )
@@ -81,7 +79,6 @@ class StatisticsViewModel @Inject constructor(
                 val monthStart = today.withDayOfMonth(1)
                 val monthEnd = today
 
-                // Параллельные запросы тренировок (Flow — нужен .first())
                 val weekWorkoutsDeferred = async {
                     getWorkoutsInPeriod(weekStart, weekEnd).first()
                 }
@@ -89,15 +86,13 @@ class StatisticsViewModel @Inject constructor(
                     getWorkoutsInPeriod(monthStart, monthEnd).first()
                 }
 
-                // Параллельные запросы питания
                 val todayMealsDeferred = async {
-                    getMealsByDate(today).first()  // Flow — нужен .first()
+                    getMealsByDate(today).first()
                 }
                 val weekMealsDeferred = async {
-                    getMealsInPeriod(weekStart, weekEnd)  // suspend — НЕ нужен .first()
+                    getMealsInPeriod(weekStart, weekEnd)
                 }
 
-                // Ждём все результаты
                 val weekWorkouts = weekWorkoutsDeferred.await()
                 val monthWorkouts = monthWorkoutsDeferred.await()
                 val todayMeals = todayMealsDeferred.await()
@@ -108,6 +103,16 @@ class StatisticsViewModel @Inject constructor(
 
                 val todayNutrition = calculateNutrition(todayMeals)
                 val weekNutrition = calculateNutrition(weekMeals)
+
+                val allTypes = BodyMeasurementsStore.data.value.keys
+                val measurements = allTypes.associateWith { type ->
+                    val entries = BodyMeasurementsStore.getEntries(type)
+                    MeasurementSummary(
+                        current = entries.firstOrNull()?.value?.toString() ?: "--",
+                        max = entries.maxOfOrNull { it.value }?.toString() ?: "--",
+                        min = entries.minOfOrNull { it.value }?.toString() ?: "--"
+                    )
+                }
 
                 _uiState.update {
                     it.copy(
@@ -127,6 +132,7 @@ class StatisticsViewModel @Inject constructor(
                             weekFat = weekNutrition.fat,
                             weekCarbs = weekNutrition.carbs
                         ),
+                        measurements = measurements,
                         isLoading = false
                     )
                 }
