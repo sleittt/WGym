@@ -3,6 +3,7 @@ package com.example.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,8 +34,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.domain.manager.WorkoutManager
+import com.example.domain.model.UserRole
+import com.example.presentation.auth.AuthViewModel
+import com.example.presentation.meal.viewmodels.NutritionViewModel
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.BottomNavigationBar
 import com.example.presentation.ui.components.Card
@@ -55,11 +61,24 @@ import com.example.presentation.workout.viewmodels.WorkoutTemplatesViewModel
 fun HomeScreen(
     navController: NavController,
     viewModel: WorkoutTemplatesViewModel = hiltViewModel(),
-    workoutManagerVm: WorkoutManagerViewModel = hiltViewModel()) {
+    workoutManagerVm: WorkoutManagerViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel(),
+    nutritionViewModel: NutritionViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsState()
     val workoutManager = workoutManagerVm.workoutManager
     val workoutState by workoutManager.workoutState.collectAsState()
     val hasActiveWorkout = workoutManager.hasActiveWorkout()
+    val userRole by authViewModel.userRole.collectAsStateWithLifecycle()
+
+    // ← РЕАЛЬНЫЕ ДАННЫЕ ПИТАНИЯ
+    val nutritionUiState by nutritionViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Обновляем данные питания при каждом входе на экран
+    DisposableEffect(Unit) {
+        nutritionViewModel.refresh()
+        onDispose { }
+    }
 
     Scaffold(
         topBar = {
@@ -76,7 +95,6 @@ fun HomeScreen(
                             fontWeight = FontWeight.Bold
                         )
 
-                        // Таймер активной тренировки в TopAppBar
                         if (hasActiveWorkout) {
                             Spacer(modifier = Modifier.width(12.dp))
                             WorkoutTimerInTopBar(
@@ -102,7 +120,16 @@ fun HomeScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Section 1: Workout Templates Grid
+            // === БАННЕР ДЛЯ ГОСТЯ ===
+            if (userRole == UserRole.GUEST) {
+                GuestBanner(
+                    onRegisterClick = {
+                        navController.navigate(Screen.Register.route)
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             SectionTitle(
                 title = "Шаблоны тренировок",
                 actionText = "Все",
@@ -120,7 +147,6 @@ fun HomeScreen(
                         name = template.name,
                         onPlay = {
                             if (hasActiveWorkout) {
-                                // Если тренировка уже идёт - просто переходим на экран
                                 navController.navigate(Screen.ActiveWorkout.createRoute("0"))
                             } else {
                                 navController.navigate(Screen.ActiveWorkout.createRoute(template.id.toString()))
@@ -142,18 +168,59 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Section 2: Calories Progress
-            CaloriesProgressCard(
-                current = 1300,
-                goal = 2000
+            // Calories Progress — реальные данные
+            if (userRole == UserRole.USER) {
+                CaloriesProgressCard(
+                    current = nutritionUiState.currentCalories,
+                    goal = nutritionUiState.goalCalories,
+                    currentMacros = nutritionUiState.currentMacros
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // References — только для пользователей
+            if (userRole == UserRole.USER) {
+                ReferencesSection(
+                    onExercisesClick = { navController.navigate(Screen.ExerciseTemplates.createRoute(selectMode = false)) },
+                    onProductsClick = { navController.navigate(Screen.FoodItems.route) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GuestBanner(
+    onRegisterClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(PrimaryRed.copy(alpha = 0.15f))
+            .clickable { onRegisterClick() }
+            .padding(16.dp)
+    ) {
+        Column {
+            Text(
+                text = "👋 Вы используете приложение как гость",
+                color = TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Section 3: References
-            ReferencesSection(
-                onExercisesClick = { navController.navigate(Screen.ExerciseTemplates.createRoute(selectMode = false)) },
-                onProductsClick = { navController.navigate(Screen.FoodItems.route) }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Зарегистрируйтесь, чтобы получить доступ к питанию, статистике и справочникам",
+                color = TextSecondary,
+                fontSize = 13.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Нажмите, чтобы зарегистрироваться →",
+                color = PrimaryRed,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }
@@ -176,7 +243,6 @@ fun WorkoutTimerInTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isRestTimerRunning) {
-            // Показываем таймер отдыха с прогресс-баром
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     activeRestTimer!!.formattedTime,
@@ -195,7 +261,6 @@ fun WorkoutTimerInTopBar(
                 )
             }
         } else {
-            // Просто время тренировки
             Text(
                 workoutState.elapsedTimeFormatted,
                 color = PrimaryGreen,
@@ -252,59 +317,97 @@ fun WorkoutTemplateHomeCard(
 @Composable
 fun CaloriesProgressCard(
     current: Int,
-    goal: Int
+    goal: Int,
+    currentMacros: com.example.presentation.ui.components.MacroValues? = null
 ) {
     Card(
         shapeRadius = 20.dp,
         padding = 20.dp
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CircularProgress(
-                current = current,
-                goal = goal,
-                progressColor = PrimaryRed,
-                size = 80.dp,
-                strokeWidth = 6.dp
-            )
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgress(
+                    current = current,
+                    goal = goal,
+                    progressColor = PrimaryRed,
+                    size = 80.dp,
+                    strokeWidth = 6.dp
+                )
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "Сегодня",
-                    color = TextSecondary,
-                    fontSize = 14.sp
-                )
-                Text(
-                    current.toString(),
-                    color = TextPrimary,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "Цель",
-                    color = TextSecondary,
-                    fontSize = 14.sp
-                )
-                Text(
-                    goal.toString(),
-                    color = TextPrimary,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Medium
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Сегодня",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        current.toString(),
+                        color = TextPrimary,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Цель",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        goal.toString(),
+                        color = TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                val remaining = (goal - current).coerceAtLeast(0)
+                CircularProgress(
+                    current = remaining,
+                    goal = goal,
+                    progressColor = PrimaryGreen,
+                    size = 80.dp,
+                    strokeWidth = 6.dp
                 )
             }
 
-            val remaining = (goal - current).coerceAtLeast(0)
-            CircularProgress(
-                current = remaining,
-                goal = goal,
-                progressColor = PrimaryGreen,
-                size = 80.dp,
-                strokeWidth = 6.dp
-            )
+            // ← БЖУ под калориями, если данные есть
+            if (currentMacros != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    MacroLabel("Белки", currentMacros.protein.toInt(), 210, PrimaryRed)
+                    MacroLabel("Жиры", currentMacros.fat.toInt(), 80, PrimaryGreen)
+                    MacroLabel("Углев", currentMacros.carbs.toInt(), 210, TextSecondary)
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun MacroLabel(
+    label: String,
+    current: Int,
+    goal: Int,
+    color: androidx.compose.ui.graphics.Color
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            color = TextSecondary,
+            fontSize = 12.sp
+        )
+        Text(
+            text = "$current / $goal",
+            color = color,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 

@@ -33,8 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.domain.model.UserRole
 import com.example.domain.model.workout.MuscleGroup
+import com.example.presentation.auth.AuthViewModel
 import com.example.presentation.ui.components.Button
 import com.example.presentation.ui.components.Card
 import com.example.presentation.ui.components.Chip
@@ -58,6 +61,10 @@ fun ExerciseDetailScreen(
     val exercise = remember(exerciseId, uiState.templates) {
         uiState.templates.find { it.id.toString() == exerciseId }
     }
+
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val userRole by authViewModel.userRole.collectAsStateWithLifecycle()
+    val isGuest = userRole == UserRole.GUEST
 
     var name by remember(exercise) { mutableStateOf(exercise?.name ?: "") }
     var selectedMuscleGroups by remember(exercise) { mutableStateOf(exercise?.muscleGroups ?: emptyList()) }
@@ -87,49 +94,7 @@ fun ExerciseDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(padding)
         ) {
-            // График
-            item {
-                Card(padding = 0.dp, shapeRadius = 16.dp) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            "График",
-                            color = TextPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.8f)
-                                .height(100.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(SurfaceVariant)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            Text(
-                                "Наибольший: 98кг",
-                                color = TextSecondary,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                "Наименьший: 60.5кг",
-                                color = TextSecondary,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Название
+            // Название (только чтение для гостя)
             item {
                 Text(
                     "Название упражнения",
@@ -137,10 +102,20 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                TextField(
-                    value = name,
-                    onValueChange = { name = it }
-                )
+                if (isGuest) {
+                    Text(
+                        text = name,
+                        color = TextPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                } else {
+                    TextField(
+                        value = name,
+                        onValueChange = { name = it }
+                    )
+                }
             }
 
             // Группы мышц
@@ -151,24 +126,33 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MuscleGroup.entries.forEach { group ->
-                        Chip(
-                            text = group.displayName,
-                            isSelected = selectedMuscleGroups.contains(group),
-                            onClick = {
-                                selectedMuscleGroups = if (selectedMuscleGroups.contains(group)) {
-                                    selectedMuscleGroups - group
-                                } else {
-                                    selectedMuscleGroups + group
+                if (isGuest) {
+                    Text(
+                        text = selectedMuscleGroups.joinToString(", ") { it.displayName },
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        MuscleGroup.entries.forEach { group ->
+                            Chip(
+                                text = group.displayName,
+                                isSelected = selectedMuscleGroups.contains(group),
+                                onClick = {
+                                    selectedMuscleGroups = if (selectedMuscleGroups.contains(group)) {
+                                        selectedMuscleGroups - group
+                                    } else {
+                                        selectedMuscleGroups + group
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -181,18 +165,27 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    exerciseTypes.forEach { type ->
-                        Chip(
-                            text = type,
-                            isSelected = type == selectedType,
-                            onClick = { selectedType = type }
-                        )
+                if (isGuest) {
+                    Text(
+                        text = selectedType,
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        exerciseTypes.forEach { type ->
+                            Chip(
+                                text = type,
+                                isSelected = type == selectedType,
+                                onClick = { selectedType = type }
+                            )
+                        }
                     }
                 }
             }
@@ -205,38 +198,48 @@ fun ExerciseDetailScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                TextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    placeholder = "Введите описание",
-                    minLines = 4,
-                    singleLine = false
-                )
-            }
-
-            // Сохранить
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    text = "Сохранить изменения",
-                    onClick = {
-                        viewModel.updateTemplate(exerciseId, name, description, selectedMuscleGroups)
-                        navController.navigateUp()
-                    },
-                    isPrimary = false
-                )
-            }
-
-            // Удалить
-            if (exerciseId.isNotBlank()) {
-                item {
-                    DangerButton(
-                        text = "Удалить упражнение",
-                        onClick = {
-                            viewModel.deleteTemplate(exerciseId)
-                            navController.navigateUp()
-                        }
+                if (isGuest) {
+                    Text(
+                        text = description.ifBlank { "Нет описания" },
+                        color = if (description.isBlank()) TextSecondary else TextPrimary,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
+                } else {
+                    TextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        placeholder = "Введите описание",
+                        minLines = 4,
+                        singleLine = false
+                    )
+                }
+            }
+
+            // Сохранить / Удалить — только для пользователей
+            if (!isGuest) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        text = "Сохранить изменения",
+                        onClick = {
+                            viewModel.updateTemplate(exerciseId, name, description, selectedMuscleGroups)
+                            navController.navigateUp()
+                        },
+                        isPrimary = false
+                    )
+                }
+
+                if (exerciseId.isNotBlank()) {
+                    item {
+                        DangerButton(
+                            text = "Удалить упражнение",
+                            onClick = {
+                                viewModel.deleteTemplate(exerciseId)
+                                navController.navigateUp()
+                            }
+                        )
+                    }
                 }
             }
         }

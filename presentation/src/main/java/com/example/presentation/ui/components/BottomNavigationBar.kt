@@ -31,9 +31,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.domain.manager.WorkoutManager
+import com.example.domain.model.UserRole
+import com.example.presentation.auth.AuthViewModel
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.theme.Background
 import com.example.presentation.ui.theme.PrimaryGreen
@@ -58,8 +62,7 @@ val bottomNavItems = listOf(
     BottomNavItem.Home,
     BottomNavItem.Workouts,
     BottomNavItem.Nutrition,
-    BottomNavItem.Statistics,
-    BottomNavItem.Profile
+    BottomNavItem.Statistics
 )
 
 val bottomNavRoutes = setOf(
@@ -75,10 +78,20 @@ fun BottomNavigationBar(
     navController: NavController,
     workoutManager: WorkoutManager
 ) {
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val userRole by authViewModel.userRole.collectAsStateWithLifecycle()
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     if (currentRoute != null && currentRoute !in bottomNavRoutes) return
+
+    // Для гостя показываем только Главную и Тренировки
+    val items = if (userRole == UserRole.GUEST) {
+        listOf(BottomNavItem.Home, BottomNavItem.Workouts)
+    } else {
+        bottomNavItems
+    }
 
     val workoutState by workoutManager.workoutState.collectAsState()
     val hasActiveWorkout = workoutManager.hasActiveWorkout()
@@ -86,7 +99,6 @@ fun BottomNavigationBar(
     val isRestTimerRunning = activeRestTimer != null && activeRestTimer.isRunning
 
     Column {
-        // === СТРОЧКА АКТИВНОЙ ТРЕНИРОВКИ ===
         if (hasActiveWorkout) {
             ActiveWorkoutBar(
                 workoutState = workoutState,
@@ -104,7 +116,7 @@ fun BottomNavigationBar(
             containerColor = Surface,
             tonalElevation = 0.dp
         ) {
-            bottomNavItems.forEach { item ->
+            items.forEach { item ->
                 val selected = currentRoute == item.route
                 NavigationBarItem(
                     icon = {
@@ -162,7 +174,6 @@ private fun ActiveWorkoutBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Название тренировки
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = workoutState.templateName.takeIf { it.isNotBlank() } ?: "Активная тренировка",
@@ -177,7 +188,6 @@ private fun ActiveWorkoutBar(
                 )
             }
 
-            // Таймер
             if (isRestTimerRunning && activeRestTimer != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -197,14 +207,14 @@ private fun ActiveWorkoutBar(
                         trackColor = PrimaryGreen.copy(alpha = 0.2f)
                     )
                 }
-            } else {
-                Text(
-                    text = workoutState.elapsedTimeFormatted,
-                    color = PrimaryGreen,
-                    fontSize = 16.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                )
+                } else {
+                    Text(
+                        text = workoutState.elapsedTimeFormatted,
+                        color = PrimaryGreen,
+                        fontSize = 16.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                }
             }
         }
     }
-}

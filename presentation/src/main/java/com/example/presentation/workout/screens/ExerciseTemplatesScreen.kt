@@ -38,9 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.domain.model.UserRole
 import com.example.domain.model.workout.ExerciseTemplate
 import com.example.domain.model.workout.MuscleGroup
+import com.example.presentation.auth.AuthViewModel
 import com.example.presentation.navigation.Screen
 import com.example.presentation.ui.components.Button
 import com.example.presentation.ui.components.FilterChip
@@ -62,6 +65,8 @@ fun ExerciseTemplatesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val userRole by authViewModel.userRole.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -72,7 +77,8 @@ fun ExerciseTemplatesScreen(
             )
         },
         floatingActionButton = {
-            if (!selectMode) {
+            // Создавать упражнения могут только зарегистрированные пользователи
+            if (!selectMode && userRole == UserRole.USER) {
                 FloatingActionButton(
                     onClick = { navController.navigate(Screen.ExerciseCreate.route) },
                     containerColor = PrimaryRed,
@@ -91,7 +97,6 @@ fun ExerciseTemplatesScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Поисковая строка сверху
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -102,7 +107,6 @@ fun ExerciseTemplatesScreen(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
-            // Фильтры групп мышц
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -125,7 +129,6 @@ fun ExerciseTemplatesScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Контент с весом 1f чтобы занять всё доступное пространство
             Box(modifier = Modifier.weight(1f)) {
                 if (uiState.isLoading && uiState.filteredTemplates.isEmpty()) {
                     LoadingIndicator()
@@ -153,14 +156,13 @@ fun ExerciseTemplatesScreen(
                                 ExerciseTemplateListRow(
                                     template = template,
                                     selectMode = selectMode,
+                                    userRole = userRole,
                                     onClick = {
-                                        // Клик по телу ВСЕГДА открывает детальное окно
                                         navController.navigate(
                                             Screen.ExerciseDetail.createRoute(template.id.toString())
                                         )
                                     },
                                     onAddToWorkout = {
-                                        // Клик по + только в selectMode добавляет в тренировку
                                         navController.previousBackStackEntry
                                             ?.savedStateHandle
                                             ?.set("selected_exercise_template_id", template.id.toString())
@@ -173,7 +175,8 @@ fun ExerciseTemplatesScreen(
                 }
             }
 
-            if (selectMode) {
+            // Кнопка "Добавить упражнение" только для пользователей
+            if (selectMode && userRole == UserRole.USER) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     text = "Добавить упражнение",
@@ -192,6 +195,7 @@ fun ExerciseTemplatesScreen(
 fun ExerciseTemplateListRow(
     template: ExerciseTemplate,
     selectMode: Boolean,
+    userRole: UserRole?,
     onClick: () -> Unit,
     onAddToWorkout: () -> Unit
 ) {

@@ -10,6 +10,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.presentation.HomeScreen
+import com.example.presentation.auth.screens.AuthCheckScreen
+import com.example.presentation.auth.screens.RegisterScreen
 import com.example.presentation.meal.screens.AddFoodItemScreen
 import com.example.presentation.meal.screens.FoodItemsScreen
 import com.example.presentation.meal.screens.MealItemDetailScreen
@@ -34,15 +36,24 @@ fun AppNavHost(
     Box(modifier = modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = Screen.AuthCheck.route,
             modifier = Modifier.fillMaxSize()
         ) {
+            // === AUTH ===
+            composable(Screen.AuthCheck.route) {
+                AuthCheckScreen(navController = navController)
+            }
+            composable(Screen.Register.route) {
+                RegisterScreen(navController = navController)
+            }
+
+            // === HOME ===
             composable(Screen.Home.route) { HomeScreen(navController) }
 
+            // === WORKOUT ===
             composable(Screen.WorkoutTemplates.route) {
                 WorkoutTemplatesScreen(navController)
             }
-
             composable(
                 route = Screen.WorkoutTemplateDetail.route,
                 arguments = listOf(navArgument("templateId") { type = NavType.StringType })
@@ -52,14 +63,12 @@ fun AppNavHost(
                     templateId = backStackEntry.arguments?.getString("templateId") ?: "0"
                 )
             }
-
             composable(
                 route = Screen.ActiveWorkout.route,
                 arguments = listOf(navArgument("templateId") { type = NavType.StringType })
             ) {
                 ActiveWorkoutScreen(navController = navController)
             }
-
             composable(
                 route = Screen.ExerciseTemplates.route,
                 arguments = listOf(
@@ -75,7 +84,6 @@ fun AppNavHost(
                     selectMode = selectMode
                 )
             }
-
             composable(
                 route = Screen.ExerciseDetail.route,
                 arguments = listOf(navArgument("exerciseId") { type = NavType.StringType })
@@ -85,7 +93,6 @@ fun AppNavHost(
                     exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: ""
                 )
             }
-
             composable(Screen.ExerciseCreate.route) {
                 ExerciseCreateScreen(navController)
             }
@@ -105,7 +112,6 @@ fun AppNavHost(
                     dateString = backStackEntry.arguments?.getString("date")
                 )
             }
-
             composable(Screen.FoodItems.route) {
                 FoodItemsScreen(navController = navController)
             }

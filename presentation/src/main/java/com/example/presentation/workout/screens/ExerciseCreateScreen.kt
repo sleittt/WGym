@@ -1,9 +1,7 @@
 package com.example.presentation.workout.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,14 +22,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.domain.model.UserRole
 import com.example.domain.model.workout.MuscleGroup
+import com.example.presentation.auth.AuthViewModel
+import com.example.presentation.auth.screens.GuestRestrictionScreen
 import com.example.presentation.ui.components.Button
 import com.example.presentation.ui.components.Chip
 import com.example.presentation.ui.components.TextField
 import com.example.presentation.ui.components.TopAppBar
 import com.example.presentation.ui.theme.Background
-import com.example.presentation.ui.theme.TextPrimary
 import com.example.presentation.ui.theme.TextSecondary
 import com.example.presentation.workout.viewmodels.ExerciseTemplatesViewModel
 
@@ -41,6 +42,15 @@ fun ExerciseCreateScreen(
     navController: NavController,
     viewModel: ExerciseTemplatesViewModel = hiltViewModel()
 ) {
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val userRole by authViewModel.userRole.collectAsStateWithLifecycle()
+
+    // Гостям запрещено создавать упражнения
+    if (userRole == UserRole.GUEST) {
+        GuestRestrictionScreen(navController, "Создание упражнений")
+        return
+    }
+
     var name by remember { mutableStateOf("") }
     var selectedMuscleGroups by remember { mutableStateOf(listOf<MuscleGroup>()) }
     var selectedType by remember { mutableStateOf("") }

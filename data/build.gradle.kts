@@ -41,6 +41,7 @@ dependencies {
 
     // Room
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.datastore.preferences)
     ksp(libs.androidx.room.compiler) // или ks
     implementation(libs.androidx.room.ktx)
 
