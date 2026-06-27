@@ -3,6 +3,7 @@ package com.example.presentation.workout.viewmodels
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.manager.WorkoutManager
 import com.example.domain.model.workout.Exercise
 import com.example.domain.model.workout.ExerciseTemplate
 import com.example.domain.model.workout.Set
@@ -32,6 +33,7 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
     private val updateWorkoutTemplate: UpdateWorkoutTemplateUseCase,
     private val deleteWorkoutTemplate: DeleteWorkoutTemplateUseCase,
     private val togglePin: ToggleWorkoutTemplatePinUseCase,
+    private val workoutManager: WorkoutManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -66,7 +68,8 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val template = getWorkoutTemplateById(id).first()
+                val repoTemplate = getWorkoutTemplateById(id).first()
+                val template = repoTemplate?.let { workoutManager.templateCache[it.id] ?: it }
                 if (template != null) {
                     _uiState.update {
                         it.copy(

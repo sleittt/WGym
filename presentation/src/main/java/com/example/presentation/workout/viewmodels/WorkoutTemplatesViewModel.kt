@@ -2,6 +2,7 @@ package com.example.presentation.workout.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.manager.WorkoutManager
 import com.example.domain.model.workout.WorkoutTemplate
 import com.example.domain.usecase.workout.DeleteWorkoutTemplateUseCase
 import com.example.domain.usecase.workout.GetWorkoutTemplateUseCase
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class WorkoutTemplatesViewModel @Inject constructor(
     private val getWorkoutTemplates: GetWorkoutTemplateUseCase,
-    private val deleteWorkoutTemplate: DeleteWorkoutTemplateUseCase
+    private val deleteWorkoutTemplate: DeleteWorkoutTemplateUseCase,
+    private val workoutManager: WorkoutManager
 ) : ViewModel() {
 
     data class UiState(
@@ -38,9 +40,11 @@ class WorkoutTemplatesViewModel @Inject constructor(
     private fun loadTemplates() {
         getWorkoutTemplates()
             .onEach { templates ->
-                val pinned = templates.filter { it.isPinned }.take(2)  // <-- isPinned вместо useCount > 0
+                val cached = workoutManager.templateCache
+                val merged = templates.map { cached[it.id] ?: it }
+                val pinned = merged.filter { it.isPinned }.take(2)
                 _uiState.update { it.copy(
-                    templates = templates,
+                    templates = merged,
                     pinnedTemplates = pinned,
                     isLoading = false
                 ) }

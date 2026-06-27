@@ -2,6 +2,7 @@ package com.example.presentation.statistics.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.manager.WorkoutManager // <-- добавлено
 import com.example.domain.model.meal.Meal
 import com.example.domain.model.workout.Workout
 import com.example.domain.usecase.meal.GetFoodItemByIdUseCase
@@ -25,7 +26,8 @@ class StatisticsViewModel @Inject constructor(
     private val getWorkoutsInPeriod: GetWorkoutsInPeriodUseCase,
     private val getMealsByDate: GetMealsByDateUseCase,
     private val getMealsInPeriod: GetMealsInPeriodUseCase,
-    private val getFoodItemById: GetFoodItemByIdUseCase
+    private val getFoodItemById: GetFoodItemByIdUseCase,
+    private val workoutManager: WorkoutManager // <-- добавлено
 ) : ViewModel() {
 
     data class WorkoutStats(
@@ -80,10 +82,18 @@ class StatisticsViewModel @Inject constructor(
                 val monthEnd = today
 
                 val weekWorkoutsDeferred = async {
-                    getWorkoutsInPeriod(weekStart, weekEnd).first()
+                    val repo = getWorkoutsInPeriod(weekStart, weekEnd).first()
+                    val stored = workoutManager.completedWorkouts.value.filter { // <-- берём из менеджера
+                        !it.date.isBefore(weekStart) && !it.date.isAfter(weekEnd)
+                    }
+                    (repo + stored).distinctBy { it.id } // <-- мержим
                 }
                 val monthWorkoutsDeferred = async {
-                    getWorkoutsInPeriod(monthStart, monthEnd).first()
+                    val repo = getWorkoutsInPeriod(monthStart, monthEnd).first()
+                    val stored = workoutManager.completedWorkouts.value.filter { // <-- берём из менеджера
+                        !it.date.isBefore(monthStart) && !it.date.isAfter(monthEnd)
+                    }
+                    (repo + stored).distinctBy { it.id } // <-- мержим
                 }
 
                 val todayMealsDeferred = async {

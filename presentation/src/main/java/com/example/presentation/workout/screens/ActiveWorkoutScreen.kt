@@ -79,7 +79,17 @@ fun ActiveWorkoutScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val selectedId by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow<String?>("selected_exercise_template_id", null)
+        ?.collectAsState() ?: remember { mutableStateOf(null) }
 
+    LaunchedEffect(selectedId) {
+        selectedId?.let {
+            viewModel.fetchAndAddExercise(it)
+            navController.currentBackStackEntry?.savedStateHandle?.set("selected_exercise_template_id", null)
+        }
+    }
     val activeTimer = uiState.activeRestTimer
     val isActiveTimerVisible by remember(activeTimer, listState) {
         derivedStateOf {

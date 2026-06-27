@@ -3,6 +3,7 @@ package com.example.domain.manager
 import com.example.domain.model.workout.Exercise
 import com.example.domain.model.workout.Set
 import com.example.domain.model.workout.SetType
+import com.example.domain.model.workout.Workout
 import com.example.domain.model.workout.WorkoutTemplate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -22,6 +24,7 @@ import javax.inject.Singleton
 
 @Singleton
 class WorkoutManager @Inject constructor() {
+
 
     data class RestProgress(
         val remainingSeconds: Int = 0,
@@ -78,14 +81,23 @@ class WorkoutManager @Inject constructor() {
     private var elapsedTimeJob: kotlinx.coroutines.Job? = null
     private var restTimerJob: kotlinx.coroutines.Job? = null
     private var startTime: Instant? = null
+    var currentTemplate: WorkoutTemplate? = null
+
+    private val _completedWorkouts = MutableStateFlow<List<Workout>>(emptyList())
+    val completedWorkouts: StateFlow<List<Workout>> = _completedWorkouts.asStateFlow()
+
+    private val _templateCache = mutableMapOf<Int, WorkoutTemplate>()
+    val templateCache: Map<Int, WorkoutTemplate> get() = _templateCache
 
     fun hasActiveWorkout(): Boolean = _workoutState.value.exercises.isNotEmpty() && !isFinished()
 
     private fun isFinished(): Boolean = _workoutState.value.isFinished
 
     fun startWorkout(template: WorkoutTemplate) {
+        val effectiveTemplate = _templateCache[template.id] ?: template
+        currentTemplate = effectiveTemplate
         startTime = Clock.System.now()
-        val exercises = template.exercise.map { exercise ->
+        val exercises = effectiveTemplate.exercise.map { exercise ->
             ExerciseWithSets(
                 exercise = exercise,
                 sets = exercise.sets.mapIndexed { index, set ->
@@ -106,7 +118,7 @@ class WorkoutManager @Inject constructor() {
         }
 
         _workoutState.value = WorkoutState(
-            templateName = template.name,
+            templateName = effectiveTemplate.name,
             exercises = exercises
         )
 
@@ -114,6 +126,7 @@ class WorkoutManager @Inject constructor() {
     }
 
     fun startFreeWorkout() {
+        currentTemplate = null
         startTime = Clock.System.now()
         _workoutState.value = WorkoutState(
             templateName = "Свободная тренировка",
@@ -124,9 +137,19 @@ class WorkoutManager @Inject constructor() {
 
     fun addExercise(exercise: Exercise) {
         _workoutState.update { state ->
-            val newExercise = ExerciseWithSets(
-                exercise = exercise,
-                sets = exercise.sets.mapIndexed { index, set ->
+            val sets = if (exercise.sets.isEmpty()) {
+                listOf(
+                    SetData(
+                        setNumber = "1",
+                        previous = "",
+                        weight = "0",
+                        reps = "10",
+                        restDuration = 90.seconds,
+                        type = SetType.NORMAL
+                    )
+                )
+            } else {
+                exercise.sets.mapIndexed { index, set ->
                     SetData(
                         setNumber = when (set.type) {
                             SetType.WARMUP -> "W"
@@ -140,6 +163,10 @@ class WorkoutManager @Inject constructor() {
                         type = set.type
                     )
                 }
+            }
+            val newExercise = ExerciseWithSets(
+                exercise = exercise,
+                sets = sets
             )
             state.copy(exercises = state.exercises + newExercise)
         }
@@ -260,7 +287,6 @@ class WorkoutManager @Inject constructor() {
                     )
                 }
             }
-            // Timer finished
             _workoutState.update { state ->
                 val exercises = state.exercises.toMutableList()
                 val ex = exercises[exerciseIndex]
@@ -282,7 +308,6 @@ class WorkoutManager @Inject constructor() {
         val set = exercise.sets.getOrNull(setIndex) ?: return
 
         if (set.isCompleted) {
-            // Uncomplete
             _workoutState.update { state ->
                 val exercises = state.exercises.toMutableList()
                 val ex = exercises[exerciseIndex]
@@ -295,7 +320,6 @@ class WorkoutManager @Inject constructor() {
                 state.copy(exercises = exercises)
             }
         } else {
-            // Complete and start rest
             _workoutState.update { state ->
                 val exercises = state.exercises.toMutableList()
                 val ex = exercises[exerciseIndex]
@@ -400,6 +424,64 @@ class WorkoutManager @Inject constructor() {
     private fun completeFinish() {
         stopRestTimer()
         stopElapsedTimer()
+
+        val template = currentTemplate ?: WorkoutTemplate(
+            id = 0,
+            name = _workoutState.value.templateName,
+            useCount = 0,
+            exercise = _workoutState.value.exercises.map { it.exercise },
+            isDeleted = false
+        )
+
+        val workout = Workout(
+            id = System.currentTimeMillis().toString(),
+            template = template,
+            startTime = startTime,
+            endTime = Clock.System.now(),
+            exercises = _workoutState.value.exercises.map { ews ->
+                Exercise(
+                    id = ews.exercise.id,
+                    template = ews.exercise.template,
+                    note = ews.exercise.note,
+                    sets = ews.sets.mapIndexed { index, setData ->
+                        Set(
+                            id = index,
+                            rest = setData.restDuration,
+                            load = setData.weight.toFloatOrNull() ?: 0f,
+                            reps = setData.reps.toIntOrNull() ?: 0,
+                            type = setData.type,
+                            isCompleted = setData.isCompleted
+                        )
+                    },
+                    order = ews.exercise.order
+                )
+            },
+            date = LocalDate.now()
+        )
+
+        _completedWorkouts.value = _completedWorkouts.value + workout
+
+        currentTemplate?.let { t ->
+            val updatedExercises = _workoutState.value.exercises.map { ews ->
+                ews.exercise.copy(
+                    sets = ews.sets.mapIndexed { index, setData ->
+                        Set(
+                            id = index,
+                            rest = setData.restDuration,
+                            load = setData.weight.toFloatOrNull() ?: 0f,
+                            reps = setData.reps.toIntOrNull() ?: 0,
+                            type = setData.type,
+                            isCompleted = setData.isCompleted
+                        )
+                    }
+                )
+            }
+            _templateCache[t.id] = t.copy(
+                exercise = updatedExercises,
+                useCount = t.useCount + 1
+            )
+        }
+
         _workoutState.update { it.copy(isFinished = true, showFinishDialog = false) }
     }
 
@@ -431,5 +513,6 @@ class WorkoutManager @Inject constructor() {
         stopElapsedTimer()
         _workoutState.value = WorkoutState()
         startTime = null
+        currentTemplate = null
     }
 }

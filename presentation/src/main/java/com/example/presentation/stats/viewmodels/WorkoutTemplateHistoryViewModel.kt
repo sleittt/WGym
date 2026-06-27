@@ -2,6 +2,7 @@ package com.example.presentation.stats.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.manager.WorkoutManager // <-- добавлено
 import com.example.domain.model.workout.Workout
 import com.example.domain.usecase.workout.GetWorkoutHistoryUseCase
 import com.example.domain.usecase.workout.GetWorkoutTemplateByIdUseCase
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class WorkoutTemplateHistoryViewModel @Inject constructor(
     private val getWorkoutHistory: GetWorkoutHistoryUseCase,
-    private val getWorkoutTemplateById: GetWorkoutTemplateByIdUseCase
+    private val getWorkoutTemplateById: GetWorkoutTemplateByIdUseCase,
+    private val workoutManager: WorkoutManager // <-- добавлено
 ) : ViewModel() {
 
     data class UiState(
@@ -37,12 +39,13 @@ class WorkoutTemplateHistoryViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
-                // Получаем название шаблона
                 val template = getWorkoutTemplateById(templateId).first()
                 val templateName = template?.name ?: "Шаблон"
 
-                // Фильтруем тренировки по шаблону
-                val allWorkouts = getWorkoutHistory().first()
+                val repoWorkouts = getWorkoutHistory().first()
+                val storedWorkouts = workoutManager.completedWorkouts.value // <-- берём из менеджера
+                val allWorkouts = (repoWorkouts + storedWorkouts).distinctBy { it.id } // <-- мержим
+
                 val filtered = allWorkouts.filter { it.template.id == templateId.toIntOrNull() }
                     .sortedByDescending { it.date }
 

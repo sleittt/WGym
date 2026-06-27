@@ -2,6 +2,7 @@ package com.example.presentation.stats.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.manager.WorkoutManager // <-- добавлено
 import com.example.domain.model.workout.MuscleGroup
 import com.example.domain.model.workout.Workout
 import com.example.domain.usecase.workout.GetWorkoutHistoryUseCase
@@ -19,7 +20,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class WorkoutHistoryViewModel @Inject constructor(
-    private val getWorkoutHistory: GetWorkoutHistoryUseCase
+    private val getWorkoutHistory: GetWorkoutHistoryUseCase,
+    private val workoutManager: WorkoutManager // <-- добавлено
 ) : ViewModel() {
 
     data class WorkoutGroup(
@@ -51,14 +53,17 @@ class WorkoutHistoryViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, error = null) }
 
         getWorkoutHistory()
-            .onEach { workouts ->
-                val muscleGroups = extractMuscleGroups(workouts)
-                val grouped = groupByDate(workouts)
+            .onEach { repoWorkouts ->
+                val storedWorkouts = workoutManager.completedWorkouts.value // <-- берём из менеджера
+                val allWorkouts = (repoWorkouts + storedWorkouts).distinctBy { it.id } // <-- мержим
+
+                val muscleGroups = extractMuscleGroups(allWorkouts)
+                val grouped = groupByDate(allWorkouts)
 
                 _uiState.update {
                     it.copy(
-                        allWorkouts = workouts,
-                        filteredWorkouts = workouts,
+                        allWorkouts = allWorkouts,
+                        filteredWorkouts = allWorkouts,
                         groupedWorkouts = grouped,
                         availableMuscleGroups = muscleGroups,
                         isLoading = false
