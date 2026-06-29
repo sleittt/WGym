@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
@@ -27,9 +29,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -119,6 +126,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             // === БАННЕР ДЛЯ ГОСТЯ ===
             if (userRole == UserRole.GUEST) {
@@ -136,37 +144,58 @@ fun HomeScreen(
                 onActionClick = { navController.navigate(Screen.WorkoutTemplates.route) }
             )
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.height(280.dp)
-            ) {
-                items(uiState.templates.take(4)) { template ->
-                    WorkoutTemplateHomeCard(
-                        name = template.name,
-                        onPlay = {
-                            if (hasActiveWorkout) {
-                                navController.navigate(Screen.ActiveWorkout.createRoute("0"))
-                            } else {
-                                navController.navigate(Screen.ActiveWorkout.createRoute(template.id.toString()))
-                            }
-                        },
-                        onEdit = {
-                            navController.navigate(Screen.WorkoutTemplates.route)
-                        }
-                    )
+            val gridNestedScroll = remember {
+                object : NestedScrollConnection {
+                    override fun onPostScroll(
+                        consumed: Offset,
+                        available: Offset,
+                        source: NestedScrollSource
+                    ): Offset {
+                        // Съедаем ВЕСЬ остаток скролла, чтобы он не ушёл в Column
+                        return available
+                    }
                 }
-                if (uiState.templates.size < 4) {
-                    items(4 - uiState.templates.size) {
-                        EmptyCard(
-                            onClick = { navController.navigate(Screen.WorkoutTemplates.route) }
+            }
+
+            Box(
+                modifier = Modifier
+                    .height(280.dp)
+                    .nestedScroll(gridNestedScroll)
+            ) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = true
+                ) {
+                    items(uiState.templates.take(4)) { template ->
+                        WorkoutTemplateHomeCard(
+                            name = template.name,
+                            onPlay = {
+                                if (hasActiveWorkout) {
+                                    navController.navigate(Screen.ActiveWorkout.createRoute("0"))
+                                } else {
+                                    navController.navigate(Screen.ActiveWorkout.createRoute(template.id.toString()))
+                                }
+                            },
+                            onEdit = {
+                                navController.navigate(Screen.WorkoutTemplates.route)
+                            }
                         )
+                    }
+                    if (uiState.templates.size < 4) {
+                        items(4 - uiState.templates.size) {
+                            EmptyCard(
+                                onClick = { navController.navigate(Screen.WorkoutTemplates.route) }
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
 
             // Calories Progress — реальные данные
             if (userRole == UserRole.USER) {
@@ -185,6 +214,8 @@ fun HomeScreen(
                     onProductsClick = { navController.navigate(Screen.FoodItems.route) }
                 )
             }
+            Spacer(modifier = Modifier.height(20.dp))
+
         }
     }
 }

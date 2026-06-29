@@ -176,7 +176,7 @@ fun ExerciseTemplatesScreen(
             }
 
             // Кнопка "Добавить упражнение" только для пользователей
-            if (selectMode && userRole == UserRole.USER) {
+            if (userRole == UserRole.USER) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     text = "Добавить упражнение",
