@@ -291,7 +291,7 @@ private fun StatRowItem(
                     .width(70.dp)
                     .height(50.dp)
             ) {
-                MiniChartPlaceholder(title = "Мини-график")
+                MiniChartPlaceholder(title = "")
             }
         }
     }
